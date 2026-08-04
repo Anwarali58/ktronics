@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+    <linearGradient id="piPcb" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#15803d"/>
+      <stop offset="100%" stop-color="#166534"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <circle cx="400" cy="300" r="230" fill="#22c55e" opacity="0.12"/>
+  <!-- Pi PCB -->
+  <rect x="180" y="140" width="440" height="320" rx="24" fill="url(#piPcb)" stroke="#4ade80" stroke-width="3"/>
+  <!-- SoC Chip -->
+  <rect x="340" y="240" width="100" height="100" rx="8" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
+  <rect x="355" y="255" width="70" height="70" rx="4" fill="#334155"/>
+  <text x="390" y="295" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#e2e8f0" text-anchor="middle">BCM2711</text>
+  <!-- GPIO Pin Header -->
+  <rect x="200" y="155" width="380" height="24" fill="#0f172a" rx="4"/>
+  <g fill="#f59e0b">
+    <circle cx="215" cy="167" r="4"/><circle cx="235" cy="167" r="4"/><circle cx="255" cy="167" r="4"/>
+    <circle cx="275" cy="167" r="4"/><circle cx="295" cy="167" r="4"/><circle cx="315" cy="167" r="4"/>
+    <circle cx="335" cy="167" r="4"/><circle cx="355" cy="167" r="4"/><circle cx="375" cy="167" r="4"/>
+  </g>
+  <!-- Ports Right -->
+  <rect x="580" y="210" width="55" height="70" rx="6" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+  <rect x="580" y="300" width="55" height="70" rx="6" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+  <rect x="580" y="390" width="55" height="50" rx="6" fill="#0284c7" stroke="#38bdf8" stroke-width="2"/>
+  <!-- HDMI & USB-C -->
+  <rect x="230" y="440" width="40" height="30" rx="4" fill="#cbd5e1"/>
+  <rect x="290" y="440" width="40" height="30" rx="4" fill="#cbd5e1"/>
+  <rect x="350" y="440" width="35" height="30" rx="4" fill="#e2e8f0"/>
+  <!-- Text -->
+  <text x="400" y="520" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="32" fill="#4ade80" letter-spacing="2">RASPBERRY PI 4 - 8GB</text>
+  <text x="400" y="555" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#94a3b8">Single Board Computer</text>
+</svg>

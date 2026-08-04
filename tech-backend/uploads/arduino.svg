@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="pcb" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#008184"/>
+      <stop offset="100%" stop-color="#005c5e"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <!-- Circle Glow -->
+  <circle cx="400" cy="300" r="220" fill="#008184" opacity="0.15" filter="url(#glow)"/>
+  <!-- Arduino Board -->
+  <rect x="180" y="140" width="440" height="320" rx="20" fill="url(#pcb)" stroke="#00d2d6" stroke-width="3" filter="url(#glow)"/>
+  <!-- USB Port -->
+  <rect x="140" y="240" width="70" height="70" rx="8" fill="#94a3b8" stroke="#cbd5e1" stroke-width="3"/>
+  <rect x="150" y="255" width="50" height="40" fill="#475569"/>
+  <!-- Power Jack -->
+  <rect x="150" y="360" width="75" height="65" rx="6" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+  <circle cx="187" cy="392" r="14" fill="#0f172a"/>
+  <!-- ATmega Chip -->
+  <rect x="300" y="270" width="220" height="50" rx="4" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+  <circle cx="315" cy="295" r="4" fill="#94a3b8"/>
+  <text x="340" y="302" font-family="Courier, monospace" font-weight="bold" font-size="16" fill="#e2e8f0" letter-spacing="3">ATMEGA328P</text>
+  <!-- Headers Top -->
+  <rect x="250" y="155" width="340" height="25" fill="#1e293b" rx="4"/>
+  <!-- Headers Bottom -->
+  <rect x="280" y="420" width="310" height="25" fill="#1e293b" rx="4"/>
+  <!-- Pins -->
+  <g fill="#f59e0b">
+    <circle cx="270" cy="167" r="4"/><circle cx="290" cy="167" r="4"/><circle cx="310" cy="167" r="4"/>
+    <circle cx="330" cy="167" r="4"/><circle cx="350" cy="167" r="4"/><circle cx="370" cy="167" r="4"/>
+    <circle cx="390" cy="167" r="4"/><circle cx="410" cy="167" r="4"/><circle cx="430" cy="167" r="4"/>
+  </g>
+  <!-- Logo Infinity -->
+  <path d="M 380 210 C 360 210 360 230 380 230 C 400 230 400 210 420 210 C 440 210 440 230 420 230 C 400 230 400 210 380 210 Z" fill="none" stroke="#ffffff" stroke-width="4"/>
+  <text x="375" y="223" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#ffffff">+</text>
+  <text x="417" y="223" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#ffffff">-</text>
+  <!-- Text -->
+  <text x="400" y="520" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="32" fill="#00d2d6" letter-spacing="2">ARDUINO UNO R3</text>
+  <text x="400" y="555" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#94a3b8">Microcontroller Starter Pack</text>
+</svg>
