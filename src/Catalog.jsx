@@ -199,7 +199,7 @@ export default function Catalog() {
     <div className="min-h-screen bg-white font-nunito text-slate-800 pb-20 relative">
       
 {/* WhatsApp Button */}
-      <a href="https://wa.me/923214567" target="_blank" rel="noopener noreferrer" className="fixed bottom-6 right-6 z-50 group flex items-center justify-center w-[64px] h-[64px]">
+      <a href="https://wa.me/923129760134" target="_blank" rel="noopener noreferrer" className="fixed bottom-6 right-6 z-50 group flex items-center justify-center w-[64px] h-[64px]">
         <div className="absolute inset-0 bg-slate-200 rounded-full translate-y-1.5 translate-x-1.5 transition-transform duration-300 group-hover:translate-y-2.5 group-hover:translate-x-2.5 shadow-sm"></div>
         <div className="relative bg-[#25D366] text-white w-full h-full rounded-full shadow-md group-hover:-translate-y-1 group-hover:-translate-x-1 transition-transform duration-300 flex items-center justify-center">
           {/* New Full-Bleed SVG Icon */}
