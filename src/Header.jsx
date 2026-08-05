@@ -265,11 +265,11 @@ export default function Header() {
             <button type="submit" className="absolute right-1.5 top-1.5 bg-[#45c4f0] hover:bg-[#3ab0d9] text-white p-2 rounded-full transition-colors"><Search size={18} /></button>
           </form>
 
-          {/* Fully visible Phone and Contact Details */}
+          {/* Fully visible Phone and Contact Details with Updated Number */}
           <div className="hidden lg:flex items-center gap-8 shrink-0 order-2 lg:order-3">
-            <a href="tel:+92423214567" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <a href="tel:+923111486790" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <HeadphonesIcon size={28} className="text-slate-700 stroke-1" />
-              <div className="flex flex-col"><span className="text-[13px] font-bold text-slate-700">Customer Support</span><span className="text-[15px] font-black text-[#2a64f6]">+92 (42) 321-4567</span></div>
+              <div className="flex flex-col"><span className="text-[13px] font-bold text-slate-700">Customer Support</span><span className="text-[15px] font-black text-[#2a64f6]">+92 311 1486790</span></div>
             </a>
             <a href="mailto:support@ktronics.org" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <Mail size={28} className="text-slate-700 stroke-1" />
@@ -289,7 +289,7 @@ export default function Header() {
               </div>
             </div>
 
-            {/* Nav List: Distributed completely full-width across the available space */}
+            {/* Nav List */}
             <nav className="flex items-center justify-between xl:justify-center xl:gap-10 w-full flex-1 px-4">
               <Link to="/" className="text-[15px] font-bold text-slate-700 hover:text-[#45c4f0] transition-colors whitespace-nowrap">Home</Link>
               <Link to="/?category=Microcontrollers" className="text-[15px] font-bold text-slate-700 hover:text-[#45c4f0] transition-colors whitespace-nowrap">Microcontrollers</Link>
@@ -339,13 +339,16 @@ export default function Header() {
           </div>
         </div>
 
+        {/* Mobile Nav Menu (Updated with missing list items & z-index) */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden bg-white border-t border-slate-100 p-4 absolute top-[100%] left-0 w-full shadow-[0_10px_25px_rgba(0,0,0,0.1)]">
+          <div className="lg:hidden bg-white border-t border-slate-100 p-4 absolute top-[100%] left-0 w-full shadow-[0_10px_25px_rgba(0,0,0,0.1)] z-50">
             <nav className="flex flex-col gap-2">
               <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="p-3 font-bold text-slate-700 hover:bg-slate-50 rounded-xl">Home</Link>
               <Link to="/?category=Microcontrollers" onClick={() => setIsMobileMenuOpen(false)} className="p-3 font-bold text-slate-700 hover:bg-slate-50 rounded-xl">Microcontrollers</Link>
-              <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="p-3 font-bold text-slate-700 hover:bg-slate-50 rounded-xl">Contact Us</Link>
+              <Link to="/?category=Projects" onClick={() => setIsMobileMenuOpen(false)} className="p-3 font-bold text-slate-700 hover:bg-slate-50 rounded-xl">Projects</Link>
               <Link to="/?view=new" onClick={() => setIsMobileMenuOpen(false)} className="p-3 font-bold text-slate-700 hover:bg-slate-50 rounded-xl flex items-center gap-2">Newly Added <span className="bg-rose-500 text-white text-[10px] px-2 py-0.5 rounded-full">NEW</span></Link>
+              <Link to="/blog" onClick={() => setIsMobileMenuOpen(false)} className="p-3 font-bold text-slate-700 hover:bg-slate-50 rounded-xl">Blog</Link>
+              <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="p-3 font-bold text-slate-700 hover:bg-slate-50 rounded-xl">Contact Us</Link>
               
               {currentUser ? (
                 <button onClick={handleLogout} className="p-3 font-bold text-rose-500 bg-rose-50 hover:bg-rose-100 rounded-xl text-center mt-2 w-full text-left">Log Out</button>

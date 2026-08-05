@@ -51,10 +51,8 @@ export default function Catalog() {
     return () => window.removeEventListener('storage', fetchDatabase);
   }, []);
 
-  // --- FREELY ACCESSIBLE CART & WISHLIST HANDLERS ---
   const handleAddToCart = (e, product) => {
     if (e) e.stopPropagation();
-
     const cart = JSON.parse(localStorage.getItem('ktronic_cart')) || [];
     cart.push(product);
     localStorage.setItem('ktronic_cart', JSON.stringify(cart));
@@ -64,7 +62,6 @@ export default function Catalog() {
 
   const handleAddToWishlist = (e, product) => {
     if (e) e.stopPropagation();
-
     const wishlist = JSON.parse(localStorage.getItem('ktronic_wishlist')) || [];
     if (!wishlist.some(item => item.id === product.id)) {
       wishlist.push(product);
@@ -138,12 +135,9 @@ export default function Catalog() {
                 <button onClick={(e) => handleAddToCart(e, selectedProduct)} className="flex-1 bg-[#2a64f6] hover:bg-blue-700 text-white font-black py-4 rounded-xl shadow-sm transition-colors flex justify-center items-center gap-2 text-lg">
                   <ShoppingCart size={22} /> Add to Cart
                 </button>
-                
-                {/* NEW: Dynamic Buy Now button pointing to your productUrl */}
                 <a href={selectedProduct.productUrl || '#'} target="_blank" rel="noopener noreferrer" className="flex-1 bg-[#45c4f0] hover:bg-[#3ab0d9] text-white font-black py-4 rounded-xl shadow-sm transition-colors flex justify-center items-center gap-2 text-lg">
                   Buy Now <ExternalLink size={20} />
                 </a>
-
                 <button onClick={(e) => handleAddToWishlist(e, selectedProduct)} className="w-16 h-16 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-xl flex items-center justify-center transition-colors shrink-0">
                   <Heart size={26} />
                 </button>
@@ -241,7 +235,7 @@ export default function Catalog() {
 
   return (
     <div className="min-h-screen bg-white font-nunito text-slate-800 pb-20 relative">
-      <a href="https://wa.me/923214567" target="_blank" rel="noopener noreferrer" className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 group flex items-center justify-center w-[54px] h-[54px] sm:w-[64px] sm:h-[64px]">
+      <a href="https://wa.me/923111486790" target="_blank" rel="noopener noreferrer" className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 group flex items-center justify-center w-[54px] h-[54px] sm:w-[64px] sm:h-[64px]">
         <div className="absolute inset-0 bg-slate-200 rounded-full translate-y-1 translate-x-1 sm:translate-y-1.5 sm:translate-x-1.5 transition-transform duration-300 group-hover:translate-y-2 group-hover:translate-x-2 sm:group-hover:translate-y-2.5 sm:group-hover:translate-x-2.5 shadow-sm"></div>
         <div className="relative bg-[#25D366] text-white w-full h-full rounded-full shadow-md group-hover:-translate-y-1 group-hover:-translate-x-1 transition-transform duration-300 flex items-center justify-center">
           <svg viewBox="0 0 24 24" className="w-[32px] h-[32px] sm:w-[42px] sm:h-[42px] fill-current -ml-0.5 -mt-0.5">
