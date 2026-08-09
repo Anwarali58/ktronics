@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Heart, ShoppingCart, User, HeadphonesIcon, Menu, ChevronRight, X, Mail, Trash2, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { Search, Heart, ShoppingCart, User, HeadphonesIcon, Menu, ChevronRight, X, Mail, Trash2, Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function Header() {
   const navigate = useNavigate();
@@ -10,20 +10,17 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeHoverCategory, setActiveHoverCategory] = useState(null);
   
-  // Auth State
   const [currentUser, setCurrentUser] = useState(localStorage.getItem('currentUser'));
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSignUpMode, setIsSignUpMode] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
-  const [authSuccess, setAuthSuccess] = useState(''); // NEW: For showing successful signup messages
+  const [authSuccess, setAuthSuccess] = useState('');
 
-  // Dynamic Cart and Wishlist States
   const [cartItems, setCartItems] = useState([]);
   const [wishlistItems, setWishlistItems] = useState([]);
   const [cartTotal, setCartTotal] = useState("0.00");
   
-  // Drawer States
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
 
@@ -41,14 +38,17 @@ export default function Header() {
     setCartTotal(total.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   };
 
-  useEffect(() => {
-    const dbCategories = JSON.parse(localStorage.getItem('ktronic_categories')) || [
-      'Microcontrollers', 'Robotics', 'Electronic Modules', 
-      'Displays', 'Battery & Charger', 'Kits', 'IoT & Wireless Boards', 'Tools', 'Sensors'
-    ];
+  const loadCategories = () => {
+    // Strictly load what the Admin has saved. No fake fallbacks!
+    const dbCategories = JSON.parse(localStorage.getItem('ktronic_categories')) || [];
     setCategories(dbCategories);
+  };
+
+  useEffect(() => {
+    loadCategories();
     updateCartAndWishlist();
 
+    window.addEventListener('storage', loadCategories); // Listen if Admin adds new category
     window.addEventListener('cartUpdated', updateCartAndWishlist);
     window.addEventListener('wishlistUpdated', updateCartAndWishlist);
     
@@ -56,6 +56,7 @@ export default function Header() {
     window.addEventListener('openLogin', handleOpenLogin);
 
     return () => {
+      window.removeEventListener('storage', loadCategories);
       window.removeEventListener('cartUpdated', updateCartAndWishlist);
       window.removeEventListener('wishlistUpdated', updateCartAndWishlist);
       window.removeEventListener('openLogin', handleOpenLogin);
@@ -69,7 +70,6 @@ export default function Header() {
     setIsMobileMenuOpen(false);
   };
 
-  // --- PERFECTED AUTHENTICATION LOGIC ---
   const handleAuthSubmit = (e) => {
     e.preventDefault();
     setAuthError('');
@@ -89,17 +89,13 @@ export default function Header() {
         setAuthError('Password must be at least 6 characters long.');
         return;
       }
-      // Create user
       usersDB.push({ email: emailInput, password: passwordInput, name: nameInput });
       localStorage.setItem('ktronic_users', JSON.stringify(usersDB));
       
-      // Force user to log in after signing up
-      e.target.reset(); // Clear the form
+      e.target.reset();
       setIsSignUpMode(false);
       setAuthSuccess('Account created successfully! Please log in below.');
-      
     } else {
-      // Validate Login
       const user = usersDB.find(u => u.email === emailInput);
       if (!user) {
         setAuthError('No account found with this email. Please create an account first.');
@@ -109,8 +105,6 @@ export default function Header() {
         setAuthError('Incorrect password. Please try again.');
         return;
       }
-      
-      // Success!
       localStorage.setItem('currentUser', emailInput);
       setCurrentUser(emailInput);
       setIsLoginModalOpen(false);
@@ -149,31 +143,23 @@ export default function Header() {
     window.dispatchEvent(new CustomEvent('openProductDetail', { detail: item }));
   };
 
-  const subCategories = ['Bluetooth', 'GPS/GNSS', 'GSM, GPRS, 4G', 'nRF'];
+  // We can dynamically pull subcategories if needed, but for now we will keep a few static suggestions
+  const subCategories = ['View All', 'New Arrivals', 'Best Sellers'];
 
   return (
     <>
-      {/* SHIMMER TEXT ANIMATION */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap');
         .font-nunito { font-family: 'Nunito', sans-serif; }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        
-        @keyframes gradient-shimmer {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        .animate-gradient-text {
-          background-size: 200% auto;
-          animation: gradient-shimmer 3s linear infinite;
-        }
+        @keyframes gradient-shimmer { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .animate-gradient-text { background-size: 200% auto; animation: gradient-shimmer 3s linear infinite; }
       `}</style>
 
       {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[90] transition-opacity" onClick={() => setIsSidebarOpen(false)} />}
       
-      {/* --- AUTH MODAL --- */}
+      {/* AUTH MODAL */}
       {isLoginModalOpen && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[110] flex items-center justify-center p-4 font-nunito">
           <div className="bg-white/90 backdrop-blur-xl border border-white/50 rounded-[32px] shadow-2xl w-full max-w-[900px] relative animate-fade-in-up flex overflow-hidden">
@@ -195,12 +181,10 @@ export default function Header() {
 
             <div className="w-full md:w-1/2 p-8 md:p-12 relative bg-white flex flex-col justify-center">
               <button onClick={() => { setIsLoginModalOpen(false); setAuthError(''); setAuthSuccess(''); }} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 bg-slate-50 hover:bg-rose-50 p-2.5 rounded-full transition-colors"><X size={20}/></button>
-
               <div className="md:hidden flex items-center gap-3 mb-8">
                  <div className="h-10 w-10 bg-[#45c4f0] rounded-xl flex items-center justify-center shadow-sm"><span className="text-white font-black text-2xl">K</span></div>
                  <span className="text-2xl font-black text-[#45c4f0]">Ktronics</span>
               </div>
-
               <h3 className="text-[28px] font-black text-slate-900 mb-1 tracking-tight">{isSignUpMode ? 'Create Account' : 'Sign In'}</h3>
               <p className="text-slate-500 font-bold mb-6 text-[15px]">{isSignUpMode ? 'Please fill your details below.' : 'Enter your credentials to continue.'}</p>
 
@@ -219,18 +203,8 @@ export default function Header() {
                 <div className="h-px bg-slate-200 flex-1"></div>
               </div>
 
-              {/* Dynamic Feedback Messages */}
-              {authError && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-600 text-sm font-bold px-4 py-3 rounded-xl mb-4 flex items-center justify-between animate-fade-in-up">
-                  {authError}
-                  <X size={16} className="cursor-pointer hover:text-rose-800" onClick={() => setAuthError('')} />
-                </div>
-              )}
-              {authSuccess && (
-                <div className="bg-[#2ed573]/10 border border-[#2ed573]/30 text-[#27ae60] text-sm font-bold px-4 py-3 rounded-xl mb-4 flex items-center gap-2 animate-fade-in-up">
-                  <CheckCircle2 size={18} /> {authSuccess}
-                </div>
-              )}
+              {authError && <div className="bg-rose-50 border border-rose-200 text-rose-600 text-sm font-bold px-4 py-3 rounded-xl mb-4 flex items-center justify-between animate-fade-in-up">{authError}<X size={16} className="cursor-pointer hover:text-rose-800" onClick={() => setAuthError('')} /></div>}
+              {authSuccess && <div className="bg-[#2ed573]/10 border border-[#2ed573]/30 text-[#27ae60] text-sm font-bold px-4 py-3 rounded-xl mb-4 flex items-center gap-2 animate-fade-in-up"><Heart size={18} /> {authSuccess}</div>}
 
               <form onSubmit={handleAuthSubmit} className="space-y-4">
                 {isSignUpMode && (
@@ -239,31 +213,19 @@ export default function Header() {
                     <input name="fullName" type="text" required placeholder="Full Name" className="w-full border-2 border-slate-100 bg-slate-50/50 rounded-xl pl-12 pr-4 py-3.5 outline-none focus:border-[#45c4f0] focus:bg-white focus:ring-4 focus:ring-[#45c4f0]/10 transition-all font-bold text-[15px] text-slate-800 placeholder-slate-400" />
                   </div>
                 )}
-                
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
                   <input name="email" type="email" required placeholder="Email Address" className="w-full border-2 border-slate-100 bg-slate-50/50 rounded-xl pl-12 pr-4 py-3.5 outline-none focus:border-[#45c4f0] focus:bg-white focus:ring-4 focus:ring-[#45c4f0]/10 transition-all font-bold text-[15px] text-slate-800 placeholder-slate-400" />
                 </div>
-                
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
-                  <input 
-                    name="password" 
-                    type={showPassword ? "text" : "password"} 
-                    required 
-                    placeholder="Password (min. 6 chars)" 
-                    className="w-full border-2 border-slate-100 bg-slate-50/50 rounded-xl pl-12 pr-12 py-3.5 outline-none focus:border-[#45c4f0] focus:bg-white focus:ring-4 focus:ring-[#45c4f0]/10 transition-all font-bold text-[15px] text-slate-800 placeholder-slate-400" 
-                  />
+                  <input name="password" type={showPassword ? "text" : "password"} required placeholder="Password (min. 6 chars)" className="w-full border-2 border-slate-100 bg-slate-50/50 rounded-xl pl-12 pr-12 py-3.5 outline-none focus:border-[#45c4f0] focus:bg-white focus:ring-4 focus:ring-[#45c4f0]/10 transition-all font-bold text-[15px] text-slate-800 placeholder-slate-400" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
                     {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
                   </button>
                 </div>
 
-                {!isSignUpMode && (
-                  <div className="flex justify-end pt-1">
-                     <a href="#" className="text-[13px] font-black text-[#2a64f6] hover:underline">Forgot password?</a>
-                  </div>
-                )}
+                {!isSignUpMode && <div className="flex justify-end pt-1"><a href="#" className="text-[13px] font-black text-[#2a64f6] hover:underline">Forgot password?</a></div>}
 
                 <button type="submit" className="w-full bg-[#2a64f6] text-white font-black py-4 rounded-xl mt-4 transition-all shadow-[0_4px_14px_rgba(42,100,246,0.25)] hover:shadow-[0_6px_20px_rgba(42,100,246,0.4)] hover:-translate-y-0.5 text-[16px]">
                   {isSignUpMode ? 'Create Account' : 'Sign In'}
@@ -310,9 +272,7 @@ export default function Header() {
                 <span className="font-bold text-slate-600">Total Price</span>
                 <span className="text-2xl font-black text-slate-900">Rs. {cartTotal}</span>
               </div>
-              <button className="w-full bg-[#2ed573] hover:bg-green-600 text-white font-black py-4 rounded-xl transition-colors shadow-[0_4px_14px_rgba(46,213,115,0.3)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(46,213,115,0.4)]">
-                Proceed to Checkout
-              </button>
+              <button className="w-full bg-[#2ed573] hover:bg-green-600 text-white font-black py-4 rounded-xl transition-colors shadow-[0_4px_14px_rgba(46,213,115,0.3)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(46,213,115,0.4)]">Proceed to Checkout</button>
             </div>
           </div>
         </div>
@@ -358,20 +318,22 @@ export default function Header() {
           <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden bg-white/20 p-1.5 rounded-lg"><X size={20}/></button>
         </div>
         <ul className="py-2 h-[calc(100vh-80px)] overflow-y-auto custom-scrollbar">
-          {categories.map((cat) => (
-            <li key={cat} className="relative group/item" onMouseEnter={() => setActiveHoverCategory(cat)} onMouseLeave={() => setActiveHoverCategory(null)}>
-              <Link to={`/?category=${encodeURIComponent(cat)}`} onClick={() => setIsSidebarOpen(false)} className={`w-full flex items-center justify-between px-6 py-3 text-[15px] font-bold transition-colors ${activeHoverCategory === cat ? 'text-[#45c4f0]' : 'text-slate-700'}`}>
-                {cat} <ChevronRight size={16} className={`transition-opacity hidden sm:block ${activeHoverCategory === cat ? 'opacity-100 text-[#45c4f0]' : 'opacity-0'}`} />
-              </Link>
-              {activeHoverCategory === cat && (
-                <div className="hidden sm:block absolute top-0 left-[295px] w-[220px] bg-white shadow-2xl border border-slate-100 rounded-xl py-2 z-[100]">
-                  {subCategories.map(sub => (
-                    <Link key={sub} to={`/?search=${encodeURIComponent(sub)}`} className="block px-6 py-2.5 text-[15px] font-bold text-slate-600 hover:text-[#45c4f0] hover:bg-slate-50 transition-colors">{sub}</Link>
-                  ))}
-                </div>
-              )}
-            </li>
-          ))}
+          {categories.length === 0 ? (
+            <li className="px-6 py-4 text-slate-400 font-bold text-sm">No categories available.</li>
+          ) : (
+            categories.map((cat) => (
+              <li key={cat} className="relative group/item" onMouseEnter={() => setActiveHoverCategory(cat)} onMouseLeave={() => setActiveHoverCategory(null)}>
+                <Link to={`/?category=${encodeURIComponent(cat)}`} onClick={() => setIsSidebarOpen(false)} className={`w-full flex items-center justify-between px-6 py-3 text-[15px] font-bold transition-colors ${activeHoverCategory === cat ? 'text-[#45c4f0]' : 'text-slate-700'}`}>
+                  {cat} <ChevronRight size={16} className={`transition-opacity hidden sm:block ${activeHoverCategory === cat ? 'opacity-100 text-[#45c4f0]' : 'opacity-0'}`} />
+                </Link>
+                {activeHoverCategory === cat && (
+                  <div className="hidden sm:block absolute top-0 left-[295px] w-[220px] bg-white shadow-2xl border border-slate-100 rounded-xl py-2 z-[100]">
+                    {subCategories.map(sub => <Link key={sub} to={`/?search=${encodeURIComponent(sub)}`} className="block px-6 py-2.5 text-[15px] font-bold text-slate-600 hover:text-[#45c4f0] hover:bg-slate-50 transition-colors">{sub}</Link>)}
+                  </div>
+                )}
+              </li>
+            ))
+          )}
         </ul>
       </div>
 
@@ -408,7 +370,7 @@ export default function Header() {
             </a>
             <a href="mailto:support@ktronics.org" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <Mail size={28} className="text-slate-700 stroke-1" />
-              <div className="flex flex-col"><span className="text-[13px] font-bold text-slate-700">Email Us</span><span className="text-[15px] font-black text-[#2a64f6]">support@ktronics.org</span></div>
+              <div className="flex flex-col"><span className="text-[13px] font-bold text-slate-700">Email Us</span><span className="text-[15px] font-black text-[#2a64f6]">support@ktronics.io</span></div>
             </a>
           </div>
         </div>

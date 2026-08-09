@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Heart, ArrowRight, Search, ExternalLink, ShoppingCart, ChevronLeft, CheckCircle2, Cpu, Zap, Radio, Battery, Wrench, Monitor } from 'lucide-react';
+import { Heart, ArrowRight, Search, ExternalLink, ShoppingCart, ChevronLeft, CheckCircle2 } from 'lucide-react';
 
 export default function Catalog() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [categoryDetails, setCategoryDetails] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState(null); 
   
@@ -14,11 +15,16 @@ export default function Catalog() {
   const isNewView = searchParams.get('view') === 'new';
 
   const fetchDatabase = () => {
-    const massiveDefaultCategories = [
-      'Electronic Components', 'Resistors', 'Capacitors', 'ICs & Chips', 
-      'Microcontrollers', 'Robotics', 'Sensors', 'Motors & Drivers', 
-      'Displays', 'Power Supply', 'Tools', 'IoT & Wireless', 'Breadboards'
+    // --- ONE-TIME DATABASE SEED ---
+    const massiveDefaultCategoriesDetails = [
+      { name: 'Microcontrollers', image: 'https://images.unsplash.com/photo-1517077304055-6e89abf0ceb6?w=400&q=80' },
+      { name: 'Sensors', image: 'https://images.unsplash.com/photo-1620288627228-769a7c858f96?w=400&q=80' },
+      { name: 'Robotics', image: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=400&q=80' },
+      { name: 'Resistors', image: 'https://images.unsplash.com/photo-1608564697071-0f95109bc588?w=400&q=80' },
+      { name: 'Capacitors', image: 'https://images.unsplash.com/photo-1580983584897-40f413ee0c05?w=400&q=80' },
+      { name: 'ICs & Chips', image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80' }
     ];
+
     const massiveDefaultProducts = [
       { id: 101, name: '100 ohm, 1/4 Watt Resistor (Pack of 10)', category: 'Resistors', price: 'Rs. 10.00', image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80', description: 'High precision 1/4 Watt carbon film resistors.' },
       { id: 102, name: '10k ohm, 1/4 Watt Resistor (Pack of 10)', category: 'Resistors', price: 'Rs. 10.00', image: 'https://images.unsplash.com/photo-1608564697071-0f95109bc588?w=400&q=80', description: 'Essential for pull-up and pull-down configurations in digital circuits.' },
@@ -30,10 +36,22 @@ export default function Catalog() {
       { id: 120, name: 'Ultrasonic Sensor HC-SR04', category: 'Sensors', price: 'Rs. 120.00', image: 'https://images.unsplash.com/photo-1620288627228-769a7c858f96?w=400&q=80', description: 'Accurate distance measuring sensor for obstacle avoidance robotics.' }
     ];
 
-    let dbProducts = JSON.parse(localStorage.getItem('ktronic_products')) || [];
-    let dbCategories = JSON.parse(localStorage.getItem('ktronic_categories')) || [];
+    let dbProducts = JSON.parse(localStorage.getItem('ktronic_products'));
+    let dbCategoryDetails = JSON.parse(localStorage.getItem('ktronic_category_details'));
+    let hasSeeded = localStorage.getItem('ktronic_seeded');
 
-    // Auto-fix currency symbols on load
+    // ONLY seed the default data if the site has never been loaded before!
+    // This allows the admin to freely delete things without them reappearing.
+    if (!hasSeeded || !dbProducts || !dbCategoryDetails) {
+      localStorage.setItem('ktronic_products', JSON.stringify(massiveDefaultProducts));
+      localStorage.setItem('ktronic_category_details', JSON.stringify(massiveDefaultCategoriesDetails));
+      localStorage.setItem('ktronic_categories', JSON.stringify(massiveDefaultCategoriesDetails.map(c => c.name)));
+      localStorage.setItem('ktronic_seeded', 'true');
+      dbProducts = massiveDefaultProducts;
+      dbCategoryDetails = massiveDefaultCategoriesDetails;
+    }
+
+    // Auto-fix currency symbols on load (forces old '₹' to 'Rs.')
     let needsUpdate = false;
     dbProducts = dbProducts.map(p => {
       if (p.price && p.price.includes('₹')) {
@@ -42,24 +60,15 @@ export default function Catalog() {
       }
       return p;
     });
-
-    if (dbProducts.length < 5) {
-      dbProducts = [...massiveDefaultProducts, ...dbProducts];
-      needsUpdate = true;
-    }
     
     if (needsUpdate) {
       localStorage.setItem('ktronic_products', JSON.stringify(dbProducts));
       window.dispatchEvent(new Event('cartUpdated')); 
     }
 
-    if (dbCategories.length < 5) {
-      dbCategories = massiveDefaultCategories;
-      localStorage.setItem('ktronic_categories', JSON.stringify(dbCategories));
-    }
-    
     setProducts(dbProducts);
-    setCategories(['All', ...dbCategories]);
+    setCategoryDetails(dbCategoryDetails);
+    setCategories(['All', ...dbCategoryDetails.map(c => c.name)]);
   };
 
   useEffect(() => {
@@ -128,16 +137,9 @@ export default function Catalog() {
   });
 
   const newlyAddedProducts = [...products].sort((a, b) => b.id - a.id).slice(0, 5);
+  
+  // Calculate which dynamic categories actually have products inside them right now
   const activeCategoriesWithProducts = categories.filter(c => c !== 'All' && products.some(p => p.category === c));
-
-  const popularCategoryData = [
-    { name: 'Microcontrollers', count: '89 products', icon: Cpu, color: 'text-[#2a64f6]', bg: 'bg-[#2a64f6]/10' },
-    { name: 'Sensors', count: '64 products', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-    { name: 'ICs & Chips', count: '210 products', icon: Radio, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-    { name: 'Robotics', count: '38 products', icon: Wrench, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    { name: 'Capacitors', count: '85 products', icon: Battery, color: 'text-rose-500', bg: 'bg-rose-500/10' },
-    { name: 'Displays', count: '22 products', icon: Monitor, color: 'text-[#45c4f0]', bg: 'bg-[#45c4f0]/10' },
-  ];
 
   // ==========================================
   // PREMIUM REDESIGNED CARD UI (GLASSMORPHISM)
@@ -149,7 +151,6 @@ export default function Catalog() {
         {idx % 2 === 0 && <span className="bg-gradient-to-r from-[#2ed573] to-[#27ae60] text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">NEW</span>}
       </div>
 
-      {/* Floating Action Menu (Slides in on hover) */}
       <div className="absolute top-3 right-3 z-10 flex flex-col gap-2 translate-x-12 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300 ease-out">
          <button className="bg-white text-slate-400 hover:text-[#2a64f6] hover:bg-[#eef6ff] transition-colors p-2.5 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.1)]" onClick={(e) => handleAddToCart(e, product)}>
            <ShoppingCart size={16} strokeWidth={2.5}/>
@@ -159,7 +160,6 @@ export default function Catalog() {
          </button>
       </div>
 
-      {/* Soft Tinted Image Container */}
       <div className="relative w-full aspect-square bg-[#f4f7f9] flex items-center justify-center p-6 mb-2 border-b border-slate-100/50">
         <img src={product.image} className="max-w-full max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500 ease-out drop-shadow-sm" alt={product.name} />
       </div>
@@ -169,7 +169,10 @@ export default function Catalog() {
         <span className="font-black text-slate-800 text-[16px] leading-snug mb-4 line-clamp-2 group-hover:text-[#2a64f6] transition-colors">{product.name}</span>
         
         <div className="mt-auto flex items-end justify-between">
-          <p className="font-black text-slate-900 text-[20px] leading-none tracking-tight">{product.price}</p>
+          <div>
+            <p className="text-[11px] text-slate-400 font-bold mb-0.5">Price</p>
+            <p className="font-black text-slate-900 text-[20px] leading-none tracking-tight">{product.price}</p>
+          </div>
           <p className="text-[10px] font-black text-[#2ed573] bg-[#2ed573]/10 px-2.5 py-1 rounded-md">IN STOCK</p>
         </div>
       </div>
@@ -305,22 +308,28 @@ export default function Catalog() {
               </div>
             </div>
 
-            <div className="pt-4">
-              <h2 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#2a64f6] to-[#45c4f0] animate-gradient-text mb-8 tracking-tight">Browse Popular Categories</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
-                {popularCategoryData.map((cat) => (
-                  <Link to={`/?category=${encodeURIComponent(cat.name)}`} key={cat.name} className="bg-white/80 backdrop-blur-md rounded-[24px] p-5 text-center hover:shadow-[0_12px_40px_rgba(42,100,246,0.15)] hover:border-[#45c4f0]/50 hover:-translate-y-1 transition-all flex flex-col items-center justify-center gap-4 border border-white/50 shadow-sm">
-                    <div className={`w-16 h-16 sm:w-20 sm:h-20 ${cat.bg} rounded-[20px] flex items-center justify-center mb-1 shadow-inner`}>
-                      <cat.icon size={36} strokeWidth={1.5} className={cat.color} />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-black text-[15px] text-slate-900 line-clamp-1">{cat.name}</span>
-                      <span className="text-[12px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{cat.count}</span>
-                    </div>
-                  </Link>
-                ))}
+            {/* DYNAMIC CATEGORY SHOWCASE */}
+            {categoryDetails.length > 0 && (
+              <div className="pt-4">
+                <h2 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#2a64f6] to-[#45c4f0] animate-gradient-text mb-8 tracking-tight">Browse Categories</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
+                  {categoryDetails.slice(0, 6).map((cat) => {
+                    const count = products.filter(p => p.category === cat.name).length;
+                    return (
+                      <Link to={`/?category=${encodeURIComponent(cat.name)}`} key={cat.name} className="bg-white/80 backdrop-blur-md rounded-[24px] p-5 text-center hover:shadow-[0_12px_40px_rgba(42,100,246,0.15)] hover:border-[#45c4f0]/50 hover:-translate-y-1 transition-all flex flex-col items-center justify-center gap-4 border border-white/50 shadow-sm">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[20px] overflow-hidden mb-1 shadow-inner bg-slate-50 flex items-center justify-center">
+                          {cat.image ? <img src={cat.image} className="w-full h-full object-cover" alt={cat.name}/> : <span className="text-slate-400 font-black text-2xl">{cat.name.charAt(0)}</span>}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-black text-[15px] text-slate-900 line-clamp-1">{cat.name}</span>
+                          <span className="text-[12px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{count} Products</span>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             {newlyAddedProducts.length > 0 && (
               <div className="pt-4">
