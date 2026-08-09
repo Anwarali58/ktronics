@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Heart, ArrowRight, Search, ExternalLink, ShoppingCart, ChevronLeft, CheckCircle2 } from 'lucide-react';
+import { Heart, ArrowRight, Search, ExternalLink, ShoppingCart, ChevronLeft, CheckCircle2, Cpu, Zap, Radio, Battery, Wrench, Monitor } from 'lucide-react';
 
 export default function Catalog() {
   const [products, setProducts] = useState([]);
@@ -40,8 +40,6 @@ export default function Catalog() {
     let dbCategoryDetails = JSON.parse(localStorage.getItem('ktronic_category_details'));
     let hasSeeded = localStorage.getItem('ktronic_seeded');
 
-    // ONLY seed the default data if the site has never been loaded before!
-    // This allows the admin to freely delete things without them reappearing.
     if (!hasSeeded || !dbProducts || !dbCategoryDetails) {
       localStorage.setItem('ktronic_products', JSON.stringify(massiveDefaultProducts));
       localStorage.setItem('ktronic_category_details', JSON.stringify(massiveDefaultCategoriesDetails));
@@ -51,7 +49,6 @@ export default function Catalog() {
       dbCategoryDetails = massiveDefaultCategoriesDetails;
     }
 
-    // Auto-fix currency symbols on load (forces old '₹' to 'Rs.')
     let needsUpdate = false;
     dbProducts = dbProducts.map(p => {
       if (p.price && p.price.includes('₹')) {
@@ -89,11 +86,6 @@ export default function Catalog() {
 
   const handleAddToCart = (e, product) => {
     if (e) e.stopPropagation();
-    const user = localStorage.getItem('currentUser');
-    if (!user) {
-      window.dispatchEvent(new Event('openLogin'));
-      return;
-    }
     const cart = JSON.parse(localStorage.getItem('ktronic_cart')) || [];
     cart.push(product);
     localStorage.setItem('ktronic_cart', JSON.stringify(cart));
@@ -103,11 +95,6 @@ export default function Catalog() {
 
   const handleAddToWishlist = (e, product) => {
     if (e) e.stopPropagation();
-    const user = localStorage.getItem('currentUser');
-    if (!user) {
-      window.dispatchEvent(new Event('openLogin'));
-      return;
-    }
     const wishlist = JSON.parse(localStorage.getItem('ktronic_wishlist')) || [];
     if (!wishlist.some(item => item.id === product.id)) {
       wishlist.push(product);
@@ -136,16 +123,13 @@ export default function Catalog() {
     return matchesCat && matchesSearch;
   });
 
-  const newlyAddedProducts = [...products].sort((a, b) => b.id - a.id).slice(0, 5);
+  // Updated to show 8 products instead of 5
+  const newlyAddedProducts = [...products].sort((a, b) => b.id - a.id).slice(0, 8);
   
-  // Calculate which dynamic categories actually have products inside them right now
   const activeCategoriesWithProducts = categories.filter(c => c !== 'All' && products.some(p => p.category === c));
 
-  // ==========================================
-  // PREMIUM REDESIGNED CARD UI (GLASSMORPHISM)
-  // ==========================================
   const renderCardStyleEcommerce = (product, idx) => (
-    <div key={product.id} onClick={() => setSelectedProduct(product)} className="bg-white/80 backdrop-blur-md border border-white/50 shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-3xl flex flex-col hover:border-[#45c4f0]/50 hover:shadow-[0_12px_40px_-10px_rgba(42,100,246,0.2)] transition-all duration-300 relative group overflow-hidden cursor-pointer">
+    <div key={product.id} onClick={() => setSelectedProduct(product)} className="bg-white/90 backdrop-blur-xl border border-white/60 shadow-[0_4px_24px_rgba(0,0,0,0.04)] rounded-3xl flex flex-col hover:border-[#45c4f0]/60 hover:shadow-[0_20px_40px_-10px_rgba(42,100,246,0.15)] transition-all duration-300 relative group overflow-hidden cursor-pointer">
       
       <div className="absolute top-3 left-3 z-10">
         {idx % 2 === 0 && <span className="bg-gradient-to-r from-[#2ed573] to-[#27ae60] text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">NEW</span>}
@@ -160,11 +144,11 @@ export default function Catalog() {
          </button>
       </div>
 
-      <div className="relative w-full aspect-square bg-[#f4f7f9] flex items-center justify-center p-6 mb-2 border-b border-slate-100/50">
+      <div className="relative w-full aspect-square bg-[#f8fafc]/80 flex items-center justify-center p-6 mb-2 border-b border-slate-100/50">
         <img src={product.image} className="max-w-full max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500 ease-out drop-shadow-sm" alt={product.name} />
       </div>
 
-      <div className="px-5 pt-3 pb-5 flex flex-col flex-grow text-left">
+      <div className="px-6 pt-3 pb-6 flex flex-col flex-grow text-left">
         <p className="text-[10px] font-black text-[#45c4f0] uppercase tracking-widest mb-1.5 line-clamp-1">{product.category}</p>
         <span className="font-black text-slate-800 text-[16px] leading-snug mb-4 line-clamp-2 group-hover:text-[#2a64f6] transition-colors">{product.name}</span>
         
@@ -173,16 +157,20 @@ export default function Catalog() {
             <p className="text-[11px] text-slate-400 font-bold mb-0.5">Price</p>
             <p className="font-black text-slate-900 text-[20px] leading-none tracking-tight">{product.price}</p>
           </div>
-          <p className="text-[10px] font-black text-[#2ed573] bg-[#2ed573]/10 px-2.5 py-1 rounded-md">IN STOCK</p>
+          <p className="text-[10px] font-black text-[#2ed573] bg-[#2ed573]/10 border border-[#2ed573]/20 px-2.5 py-1 rounded-md">IN STOCK</p>
         </div>
       </div>
     </div>
   );
 
-  // --- DETAIL VIEW ---
   if (selectedProduct) {
     return (
-      <div className="min-h-screen bg-transparent font-nunito pb-20 animate-fade-in-up relative">
+      <div className="min-h-screen bg-transparent font-nunito pb-20 animate-fade-in-up relative z-10">
+        <div 
+          className="fixed inset-0 z-[-2] opacity-[0.04] pointer-events-none mix-blend-multiply"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1518770660439-4636190af475?w=2000&q=80')", backgroundAttachment: "fixed", backgroundSize: "cover", backgroundPosition: "center" }}
+        ></div>
+
         <div className="max-w-[1300px] mx-auto px-6 lg:px-12 py-8 mt-6">
           <button onClick={() => setSelectedProduct(null)} className="flex items-center gap-2 text-slate-500 hover:text-[#45c4f0] font-bold mb-8 transition-colors bg-white/80 backdrop-blur-md border border-slate-200 px-5 py-2.5 rounded-full w-max shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
             <ChevronLeft size={18} /> Back to Catalog
@@ -229,18 +217,25 @@ export default function Catalog() {
     );
   }
 
-  // --- CATALOG VIEW ---
   return (
-    <div className="min-h-screen font-nunito text-slate-800 pb-20 relative bg-[#ebf0f5]">
+    <div className="min-h-screen font-nunito text-slate-800 pb-20 relative bg-[#f4f7f9] overflow-hidden z-10">
       
-      {/* Dynamic Floating Background Orbs */}
-      <div className="fixed inset-0 z-[-1] overflow-hidden pointer-events-none">
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-gradient-to-br from-[#45c4f0]/20 to-transparent rounded-full blur-3xl"></div>
-          <div className="absolute top-[40%] right-[-10%] w-[30%] h-[50%] bg-gradient-to-tl from-[#2a64f6]/10 to-transparent rounded-full blur-3xl"></div>
-          <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[30%] bg-gradient-to-t from-purple-500/5 to-transparent rounded-full blur-3xl"></div>
+      <div 
+        className="fixed inset-0 z-[-2] opacity-[0.04] pointer-events-none mix-blend-multiply"
+        style={{
+          backgroundImage: "url('https://images.unsplash.com/photo-1518770660439-4636190af475?w=2000&q=80')",
+          backgroundAttachment: "fixed",
+          backgroundSize: "cover",
+          backgroundPosition: "center"
+        }}
+      ></div>
+
+      <div className="fixed inset-0 z-[-1] overflow-hidden pointer-events-none mix-blend-normal">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#45c4f0]/20 rounded-full blur-[120px]"></div>
+          <div className="absolute top-[40%] right-[-10%] w-[30%] h-[50%] bg-[#2a64f6]/10 rounded-full blur-[120px]"></div>
+          <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[30%] bg-purple-500/5 rounded-full blur-[120px]"></div>
       </div>
 
-      {/* Pulsing & Bouncing WhatsApp Button */}
       <a href="https://wa.me/923111486790" target="_blank" rel="noopener noreferrer" className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 group flex items-center justify-center w-[54px] h-[54px] sm:w-[64px] sm:h-[64px] animate-bounce hover:animate-none">
         <div className="absolute inset-0 bg-[#25D366] rounded-full animate-ping opacity-60 group-hover:opacity-0 transition-opacity"></div>
         <div className="absolute inset-0 bg-slate-200 rounded-full translate-y-1 translate-x-1 sm:translate-y-1.5 sm:translate-x-1.5 group-hover:translate-y-2.5 group-hover:translate-x-2.5 transition-transform duration-300 shadow-sm"></div>
@@ -251,16 +246,16 @@ export default function Catalog() {
         </div>
       </a>
 
-      <div className="max-w-[1300px] mx-auto px-6 lg:px-12 py-8">
+      <div className="max-w-[1300px] mx-auto px-6 lg:px-12 py-8 relative z-10">
         
         {isNewView ? (
           <div className="animate-fade-in-up">
             <div className="flex items-center justify-between mb-8">
               <h1 className="text-3xl sm:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#2a64f6] to-[#45c4f0] animate-gradient-text flex items-center gap-3">
-                <span className="bg-rose-500 text-white text-[11px] px-3 py-1 rounded-full animate-pulse tracking-wider">NEW ARRIVALS</span> Freshly Added
+                <span className="bg-rose-500 text-white text-[11px] px-3 py-1 rounded-full animate-pulse tracking-wider shadow-sm">NEW ARRIVALS</span> Freshly Added
               </h1>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {newlyAddedProducts.map((p, i) => renderCardStyleEcommerce(p, i))}
             </div>
           </div>
@@ -308,7 +303,6 @@ export default function Catalog() {
               </div>
             </div>
 
-            {/* DYNAMIC CATEGORY SHOWCASE */}
             {categoryDetails.length > 0 && (
               <div className="pt-4">
                 <h2 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#2a64f6] to-[#45c4f0] animate-gradient-text mb-8 tracking-tight">Browse Categories</h2>
@@ -316,7 +310,7 @@ export default function Catalog() {
                   {categoryDetails.slice(0, 6).map((cat) => {
                     const count = products.filter(p => p.category === cat.name).length;
                     return (
-                      <Link to={`/?category=${encodeURIComponent(cat.name)}`} key={cat.name} className="bg-white/80 backdrop-blur-md rounded-[24px] p-5 text-center hover:shadow-[0_12px_40px_rgba(42,100,246,0.15)] hover:border-[#45c4f0]/50 hover:-translate-y-1 transition-all flex flex-col items-center justify-center gap-4 border border-white/50 shadow-sm">
+                      <Link to={`/?category=${encodeURIComponent(cat.name)}`} key={cat.name} className="bg-white/90 backdrop-blur-md rounded-[24px] p-5 text-center hover:shadow-[0_12px_40px_rgba(42,100,246,0.15)] hover:border-[#45c4f0]/50 hover:-translate-y-1 transition-all flex flex-col items-center justify-center gap-4 border border-white/50 shadow-sm">
                         <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[20px] overflow-hidden mb-1 shadow-inner bg-slate-50 flex items-center justify-center">
                           {cat.image ? <img src={cat.image} className="w-full h-full object-cover" alt={cat.name}/> : <span className="text-slate-400 font-black text-2xl">{cat.name.charAt(0)}</span>}
                         </div>
@@ -335,7 +329,7 @@ export default function Catalog() {
               <div className="pt-4">
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#2a64f6] to-[#45c4f0] animate-gradient-text tracking-tight">Freshly Added</h2>
-                  <Link to="/?view=new" className="text-[13px] sm:text-[14px] font-bold text-[#45c4f0] bg-white border border-slate-200 px-5 py-2.5 rounded-full hover:shadow-md transition-all flex items-center gap-1.5 shadow-sm">View All <ArrowRight size={14}/></Link>
+                  <Link to="/?view=new" className="text-[13px] sm:text-[14px] font-bold text-[#45c4f0] bg-white/90 backdrop-blur-md border border-slate-200/50 px-5 py-2.5 rounded-full hover:shadow-md transition-all flex items-center gap-1.5 shadow-sm">View All <ArrowRight size={14}/></Link>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {newlyAddedProducts.map((p, i) => renderCardStyleEcommerce(p, i))}
@@ -350,7 +344,7 @@ export default function Catalog() {
                   <div key={cat}>
                     <div className="flex items-center justify-between mb-8">
                       <h2 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#2a64f6] to-[#45c4f0] animate-gradient-text tracking-tight">{cat} Essentials</h2>
-                      <Link to={`/?category=${encodeURIComponent(cat)}`} className="text-[13px] sm:text-[14px] font-bold text-slate-500 bg-white border border-slate-200 px-5 py-2.5 rounded-full hover:shadow-md transition-all shadow-sm">Explore Catalog</Link>
+                      <Link to={`/?category=${encodeURIComponent(cat)}`} className="text-[13px] sm:text-[14px] font-bold text-slate-500 bg-white/90 backdrop-blur-md border border-slate-200/50 px-5 py-2.5 rounded-full hover:shadow-md transition-all shadow-sm">Explore Catalog</Link>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                       {catProducts.map((p, i) => renderCardStyleEcommerce(p, i))}

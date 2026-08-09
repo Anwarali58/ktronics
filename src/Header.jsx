@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Heart, ShoppingCart, User, HeadphonesIcon, Menu, ChevronRight, X, Mail, Trash2, Lock, Eye, EyeOff } from 'lucide-react';
+import { Search, Heart, ShoppingCart, User, HeadphonesIcon, Menu, ChevronRight, X, Mail, Trash2, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 
 export default function Header() {
   const navigate = useNavigate();
@@ -39,7 +39,6 @@ export default function Header() {
   };
 
   const loadCategories = () => {
-    // Strictly load what the Admin has saved. No fake fallbacks!
     const dbCategories = JSON.parse(localStorage.getItem('ktronic_categories')) || [];
     setCategories(dbCategories);
   };
@@ -48,18 +47,14 @@ export default function Header() {
     loadCategories();
     updateCartAndWishlist();
 
-    window.addEventListener('storage', loadCategories); // Listen if Admin adds new category
+    window.addEventListener('storage', loadCategories); 
     window.addEventListener('cartUpdated', updateCartAndWishlist);
     window.addEventListener('wishlistUpdated', updateCartAndWishlist);
-    
-    const handleOpenLogin = () => setIsLoginModalOpen(true);
-    window.addEventListener('openLogin', handleOpenLogin);
 
     return () => {
       window.removeEventListener('storage', loadCategories);
       window.removeEventListener('cartUpdated', updateCartAndWishlist);
       window.removeEventListener('wishlistUpdated', updateCartAndWishlist);
-      window.removeEventListener('openLogin', handleOpenLogin);
     };
   }, []);
 
@@ -143,7 +138,6 @@ export default function Header() {
     window.dispatchEvent(new CustomEvent('openProductDetail', { detail: item }));
   };
 
-  // We can dynamically pull subcategories if needed, but for now we will keep a few static suggestions
   const subCategories = ['View All', 'New Arrivals', 'Best Sellers'];
 
   return (
@@ -204,7 +198,7 @@ export default function Header() {
               </div>
 
               {authError && <div className="bg-rose-50 border border-rose-200 text-rose-600 text-sm font-bold px-4 py-3 rounded-xl mb-4 flex items-center justify-between animate-fade-in-up">{authError}<X size={16} className="cursor-pointer hover:text-rose-800" onClick={() => setAuthError('')} /></div>}
-              {authSuccess && <div className="bg-[#2ed573]/10 border border-[#2ed573]/30 text-[#27ae60] text-sm font-bold px-4 py-3 rounded-xl mb-4 flex items-center gap-2 animate-fade-in-up"><Heart size={18} /> {authSuccess}</div>}
+              {authSuccess && <div className="bg-[#2ed573]/10 border border-[#2ed573]/30 text-[#27ae60] text-sm font-bold px-4 py-3 rounded-xl mb-4 flex items-center gap-2 animate-fade-in-up"><CheckCircle2 size={18} /> {authSuccess}</div>}
 
               <form onSubmit={handleAuthSubmit} className="space-y-4">
                 {isSignUpMode && (
@@ -348,7 +342,7 @@ export default function Header() {
               </div>
             </Link>
             <div className="flex items-center gap-3 lg:hidden">
-              <button onClick={() => currentUser ? setIsCartOpen(true) : setIsLoginModalOpen(true)} className="relative p-2 text-slate-600">
+              <button onClick={() => setIsCartOpen(true)} className="relative p-2 text-slate-600">
                 <ShoppingCart size={24} />
                 <span className="absolute top-0 right-0 bg-rose-500 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm">{cartItems.length}</span>
               </button>
@@ -370,7 +364,7 @@ export default function Header() {
             </a>
             <a href="mailto:support@ktronics.org" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <Mail size={28} className="text-slate-700 stroke-1" />
-              <div className="flex flex-col"><span className="text-[13px] font-bold text-slate-700">Email Us</span><span className="text-[15px] font-black text-[#2a64f6]">support@ktronics.io</span></div>
+              <div className="flex flex-col"><span className="text-[13px] font-bold text-slate-700">Email Us</span><span className="text-[15px] font-black text-[#2a64f6]">support@ktronics.tech</span></div>
             </a>
           </div>
         </div>
@@ -415,12 +409,12 @@ export default function Header() {
                 </button>
               )}
               
-              <button onClick={() => currentUser ? setIsWishlistOpen(true) : setIsLoginModalOpen(true)} className="w-10 h-10 bg-white rounded-full border border-slate-200 flex items-center justify-center text-rose-500 hover:text-white hover:bg-rose-500 transition-colors relative shadow-sm cursor-pointer">
+              <button onClick={() => setIsWishlistOpen(true)} className="w-10 h-10 bg-white rounded-full border border-slate-200 flex items-center justify-center text-rose-500 hover:text-white hover:bg-rose-500 transition-colors relative shadow-sm cursor-pointer">
                 <Heart size={18}/>
                 <span className="absolute -top-1 -right-1 bg-rose-100 text-rose-600 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">{wishlistItems.length}</span>
               </button>
               
-              <button onClick={() => currentUser ? setIsCartOpen(true) : setIsLoginModalOpen(true)} className="h-10 px-4 bg-white rounded-full flex items-center gap-2 text-slate-700 hover:bg-[#e0f7fa] transition-colors border border-slate-200 relative group cursor-pointer shadow-sm">
+              <button onClick={() => setIsCartOpen(true)} className="h-10 px-4 bg-white rounded-full flex items-center gap-2 text-slate-700 hover:bg-[#e0f7fa] transition-colors border border-slate-200 relative group cursor-pointer shadow-sm">
                 <div className="bg-[#45c4f0] text-white p-1.5 rounded-full relative">
                   <ShoppingCart size={14}/>
                   <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">{cartItems.length}</span>
