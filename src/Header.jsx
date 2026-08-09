@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Heart, ShoppingCart, User, HeadphonesIcon, Menu, ChevronRight, X, Mail, Trash2, Lock, Eye, EyeOff } from 'lucide-react';
+import { Search, Heart, ShoppingCart, User, HeadphonesIcon, Menu, ChevronRight, X, Mail, Trash2, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 
 export default function Header() {
   const navigate = useNavigate();
@@ -16,6 +16,7 @@ export default function Header() {
   const [isSignUpMode, setIsSignUpMode] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [authSuccess, setAuthSuccess] = useState(''); // NEW: For showing successful signup messages
 
   // Dynamic Cart and Wishlist States
   const [cartItems, setCartItems] = useState([]);
@@ -37,7 +38,7 @@ export default function Header() {
       const numericPrice = parseFloat(item.price.replace(/[^0-9.-]+/g, ""));
       return sum + (isNaN(numericPrice) ? 0 : numericPrice);
     }, 0);
-    setCartTotal(total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    setCartTotal(total.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   };
 
   useEffect(() => {
@@ -68,9 +69,11 @@ export default function Header() {
     setIsMobileMenuOpen(false);
   };
 
+  // --- PERFECTED AUTHENTICATION LOGIC ---
   const handleAuthSubmit = (e) => {
     e.preventDefault();
     setAuthError('');
+    setAuthSuccess('');
     
     const emailInput = e.target.elements.email.value;
     const passwordInput = e.target.elements.password.value;
@@ -86,31 +89,36 @@ export default function Header() {
         setAuthError('Password must be at least 6 characters long.');
         return;
       }
+      // Create user
       usersDB.push({ email: emailInput, password: passwordInput, name: nameInput });
       localStorage.setItem('ktronic_users', JSON.stringify(usersDB));
       
-      localStorage.setItem('currentUser', emailInput);
-      setCurrentUser(emailInput);
-      setIsLoginModalOpen(false);
+      // Force user to log in after signing up
+      e.target.reset(); // Clear the form
+      setIsSignUpMode(false);
+      setAuthSuccess('Account created successfully! Please log in below.');
+      
     } else {
+      // Validate Login
       const user = usersDB.find(u => u.email === emailInput);
       if (!user) {
-        setAuthError('No account found with this email address.');
+        setAuthError('No account found with this email. Please create an account first.');
         return;
       }
       if (user.password !== passwordInput) {
         setAuthError('Incorrect password. Please try again.');
         return;
       }
+      
+      // Success!
       localStorage.setItem('currentUser', emailInput);
       setCurrentUser(emailInput);
       setIsLoginModalOpen(false);
     }
   };
 
-  // Prevent fake logins! Forces user to use Email/Password
   const handleSocialLogin = (provider) => {
-    setAuthError(`Live ${provider} authentication requires backend OAuth configuration. Please use the Email/Password option to log in.`);
+    setAuthError(`Live ${provider} authentication requires backend OAuth configuration. Please use the Email/Password option to log in securely.`);
   };
 
   const handleLogout = () => {
@@ -145,24 +153,33 @@ export default function Header() {
 
   return (
     <>
+      {/* SHIMMER TEXT ANIMATION */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap');
         .font-nunito { font-family: 'Nunito', sans-serif; }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        @keyframes gradient-shimmer {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .animate-gradient-text {
+          background-size: 200% auto;
+          animation: gradient-shimmer 3s linear infinite;
+        }
       `}</style>
 
       {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[90] transition-opacity" onClick={() => setIsSidebarOpen(false)} />}
       
-      {/* --- PREMIUM AUTH MODAL --- */}
+      {/* --- AUTH MODAL --- */}
       {isLoginModalOpen && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[110] flex items-center justify-center p-4 font-nunito">
-          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-[900px] relative animate-fade-in-up flex overflow-hidden">
-            
+          <div className="bg-white/90 backdrop-blur-xl border border-white/50 rounded-[32px] shadow-2xl w-full max-w-[900px] relative animate-fade-in-up flex overflow-hidden">
             <div className="hidden md:flex w-1/2 bg-gradient-to-br from-[#2a64f6] to-[#45c4f0] p-10 flex-col justify-between relative overflow-hidden">
                <div className="absolute -top-24 -left-24 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
                <div className="absolute bottom-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-3xl translate-x-1/3 translate-y-1/3"></div>
-               
                <div className="relative z-10">
                  <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center mb-8 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
                    <span className="text-[#2a64f6] font-black text-3xl">K</span>
@@ -174,19 +191,10 @@ export default function Header() {
                    {isSignUpMode ? 'Create an account to track orders, save wishlist items, and checkout faster.' : 'Log in to access your personalized dashboard, saved components, and order history.'}
                  </p>
                </div>
-               
-               <div className="relative z-10">
-                  <div className="flex -space-x-3 mb-3">
-                     <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80" className="w-10 h-10 rounded-full border-2 border-[#45c4f0] object-cover" alt="user" />
-                     <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&q=80" className="w-10 h-10 rounded-full border-2 border-[#45c4f0] object-cover" alt="user" />
-                     <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80" className="w-10 h-10 rounded-full border-2 border-[#45c4f0] object-cover" alt="user" />
-                  </div>
-                  <p className="text-white/90 text-[13px] font-black tracking-widest uppercase">Trusted by 10,000+ makers.</p>
-               </div>
             </div>
 
             <div className="w-full md:w-1/2 p-8 md:p-12 relative bg-white flex flex-col justify-center">
-              <button onClick={() => { setIsLoginModalOpen(false); setAuthError(''); }} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 bg-slate-50 hover:bg-rose-50 p-2.5 rounded-full transition-colors"><X size={20}/></button>
+              <button onClick={() => { setIsLoginModalOpen(false); setAuthError(''); setAuthSuccess(''); }} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 bg-slate-50 hover:bg-rose-50 p-2.5 rounded-full transition-colors"><X size={20}/></button>
 
               <div className="md:hidden flex items-center gap-3 mb-8">
                  <div className="h-10 w-10 bg-[#45c4f0] rounded-xl flex items-center justify-center shadow-sm"><span className="text-white font-black text-2xl">K</span></div>
@@ -194,18 +202,14 @@ export default function Header() {
               </div>
 
               <h3 className="text-[28px] font-black text-slate-900 mb-1 tracking-tight">{isSignUpMode ? 'Create Account' : 'Sign In'}</h3>
-              <p className="text-slate-500 font-bold mb-6 text-[15px]">
-                {isSignUpMode ? 'Please fill your details below.' : 'Enter your credentials to continue.'}
-              </p>
+              <p className="text-slate-500 font-bold mb-6 text-[15px]">{isSignUpMode ? 'Please fill your details below.' : 'Enter your credentials to continue.'}</p>
 
               <div className="flex gap-3 mb-6">
                  <button onClick={() => handleSocialLogin('Google')} className="flex-1 border-2 border-slate-100 py-3 rounded-xl flex items-center justify-center gap-2 text-[14px] font-black text-slate-700 hover:bg-slate-50 hover:border-[#4285F4] transition-all">
                     <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                    Google
                  </button>
                  <button onClick={() => handleSocialLogin('GitHub')} className="flex-1 border-2 border-slate-100 py-3 rounded-xl flex items-center justify-center gap-2 text-[14px] font-black text-slate-700 hover:bg-slate-50 hover:border-slate-800 transition-all">
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd"/></svg>
-                    GitHub
                  </button>
               </div>
 
@@ -215,10 +219,16 @@ export default function Header() {
                 <div className="h-px bg-slate-200 flex-1"></div>
               </div>
 
+              {/* Dynamic Feedback Messages */}
               {authError && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-600 text-sm font-bold px-4 py-3 rounded-xl mb-4 flex items-center justify-between">
+                <div className="bg-rose-50 border border-rose-200 text-rose-600 text-sm font-bold px-4 py-3 rounded-xl mb-4 flex items-center justify-between animate-fade-in-up">
                   {authError}
                   <X size={16} className="cursor-pointer hover:text-rose-800" onClick={() => setAuthError('')} />
+                </div>
+              )}
+              {authSuccess && (
+                <div className="bg-[#2ed573]/10 border border-[#2ed573]/30 text-[#27ae60] text-sm font-bold px-4 py-3 rounded-xl mb-4 flex items-center gap-2 animate-fade-in-up">
+                  <CheckCircle2 size={18} /> {authSuccess}
                 </div>
               )}
 
@@ -261,7 +271,7 @@ export default function Header() {
               </form>
 
               <div className="mt-8 text-center">
-                <button onClick={() => { setIsSignUpMode(!isSignUpMode); setAuthError(''); setShowPassword(false); }} className="text-[15px] font-bold text-slate-500 hover:text-[#2a64f6] transition-colors">
+                <button onClick={() => { setIsSignUpMode(!isSignUpMode); setAuthError(''); setAuthSuccess(''); setShowPassword(false); }} className="text-[15px] font-bold text-slate-500 hover:text-[#2a64f6] transition-colors">
                   {isSignUpMode ? 'Already have an account? Log In' : "Don't have an account? Sign up"}
                 </button>
               </div>
@@ -288,7 +298,7 @@ export default function Header() {
                     <img src={item.image} className="w-16 h-16 object-contain bg-white rounded-lg p-1 border border-slate-100 shadow-sm" alt={item.name} />
                     <div className="flex-1">
                       <h4 className="text-[14px] font-bold leading-tight line-clamp-2 text-slate-800 group-hover:text-[#2a64f6] transition-colors">{item.name}</h4>
-                      <p className="text-slate-500 font-black mt-1 text-[13px]">{item.price}</p>
+                      <p className="text-[#2a64f6] font-black mt-1">{item.price}</p>
                     </div>
                     <button onClick={(e) => removeFromCart(e, idx)} className="text-slate-400 p-2 bg-white border border-slate-100 rounded-lg hover:bg-rose-500 hover:border-rose-500 hover:text-white transition-colors shadow-sm"><Trash2 size={16}/></button>
                   </div>
@@ -298,7 +308,7 @@ export default function Header() {
             <div className="p-6 border-t border-slate-100 bg-slate-50">
               <div className="flex justify-between items-center mb-4">
                 <span className="font-bold text-slate-600">Total Price</span>
-                <span className="text-2xl font-black text-slate-900">₹{cartTotal}</span>
+                <span className="text-2xl font-black text-slate-900">Rs. {cartTotal}</span>
               </div>
               <button className="w-full bg-[#2ed573] hover:bg-green-600 text-white font-black py-4 rounded-xl transition-colors shadow-[0_4px_14px_rgba(46,213,115,0.3)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(46,213,115,0.4)]">
                 Proceed to Checkout
@@ -326,7 +336,7 @@ export default function Header() {
                     <img src={item.image} className="w-16 h-16 object-contain bg-white rounded-lg p-1 border border-slate-100 shadow-sm" alt={item.name} />
                     <div className="flex-1">
                       <h4 className="text-[14px] font-bold leading-tight line-clamp-2 group-hover:text-[#2a64f6] transition-colors">{item.name}</h4>
-                      <p className="text-slate-500 font-black mt-1 text-[13px]">{item.price}</p>
+                      <p className="text-[#2a64f6] font-black mt-1">{item.price}</p>
                     </div>
                     <button onClick={(e) => removeFromWishlist(e, idx)} className="text-slate-400 p-2 bg-white border border-slate-100 rounded-lg hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-colors shadow-sm"><Trash2 size={16}/></button>
                   </div>
@@ -403,7 +413,7 @@ export default function Header() {
           </div>
         </div>
 
-        <div className="hidden lg:block bg-[#f8fafc] border-t border-[#e2e8f0]">
+        <div className="hidden lg:block bg-white border-t border-[#e2e8f0]">
           <div className="max-w-[1300px] mx-auto px-6 lg:px-12 flex items-center justify-between h-[64px] overflow-visible no-scrollbar">
             <div className="h-full flex items-center cursor-pointer group mr-6 shrink-0" onClick={() => setIsSidebarOpen(true)}>
               <div className="flex items-center bg-white rounded-full pr-5 pl-1 py-1 shadow-sm border border-slate-200 group-hover:shadow-md transition-all">
@@ -453,7 +463,7 @@ export default function Header() {
                   <ShoppingCart size={14}/>
                   <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">{cartItems.length}</span>
                 </div>
-                <span className="text-[15px] font-black">₹{cartTotal}</span>
+                <span className="text-[15px] font-black">Rs. {cartTotal}</span>
               </button>
             </div>
           </div>
