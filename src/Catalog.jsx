@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Heart, ArrowRight, Search, ExternalLink, ShoppingCart, ChevronLeft, CheckCircle2, Cpu, Zap, Radio, Battery, Wrench, Monitor } from 'lucide-react';
+import { Heart, ArrowRight, Search, ExternalLink, ShoppingCart, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 
 export default function Catalog() {
   const [products, setProducts] = useState([]);
@@ -14,26 +14,72 @@ export default function Catalog() {
   const activeCategory = searchParams.get('category') || 'All';
   const isNewView = searchParams.get('view') === 'new';
 
+  const categoryScrollRef = useRef(null);
+  const productRefs = useRef({}); 
+
+  const scrollContainer = (node, direction) => {
+    if (node) {
+      const scrollAmount = direction === 'left' ? -320 : 320;
+      node.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
   const fetchDatabase = () => {
-    // --- ONE-TIME DATABASE SEED ---
     const massiveDefaultCategoriesDetails = [
       { name: 'Microcontrollers', image: 'https://images.unsplash.com/photo-1517077304055-6e89abf0ceb6?w=400&q=80' },
       { name: 'Sensors', image: 'https://images.unsplash.com/photo-1620288627228-769a7c858f96?w=400&q=80' },
       { name: 'Robotics', image: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=400&q=80' },
       { name: 'Resistors', image: 'https://images.unsplash.com/photo-1608564697071-0f95109bc588?w=400&q=80' },
       { name: 'Capacitors', image: 'https://images.unsplash.com/photo-1580983584897-40f413ee0c05?w=400&q=80' },
-      { name: 'ICs & Chips', image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80' }
+      { name: 'ICs & Chips', image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80' },
+      { name: 'Displays', image: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=400&q=80' },
+      { name: 'Tools', image: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=400&q=80' },
+      { name: 'Breadboards', image: 'https://images.unsplash.com/photo-1620288627228-769a7c858f96?w=400&q=80' }
     ];
 
+    // MASSIVELY EXPANDED DEFAULT INVENTORY
     const massiveDefaultProducts = [
-      { id: 101, name: '100 ohm, 1/4 Watt Resistor (Pack of 10)', category: 'Resistors', price: 'Rs. 10.00', image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80', description: 'High precision 1/4 Watt carbon film resistors.' },
-      { id: 102, name: '10k ohm, 1/4 Watt Resistor (Pack of 10)', category: 'Resistors', price: 'Rs. 10.00', image: 'https://images.unsplash.com/photo-1608564697071-0f95109bc588?w=400&q=80', description: 'Essential for pull-up and pull-down configurations in digital circuits.' },
-      { id: 106, name: '1000uF 25V Electrolytic Capacitor (Pack of 5)', category: 'Capacitors', price: 'Rs. 30.00', image: 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=400&q=80', description: 'Bulk decoupling and power supply smoothing capacitors.' },
-      { id: 111, name: 'NE555 Timer IC (DIP-8)', category: 'ICs & Chips', price: 'Rs. 12.00', image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80', description: 'The classic 555 timer chip. Create oscillators, delays, and PWM signals.' },
-      { id: 116, name: 'Arduino Uno R3 Compatible Board', category: 'Microcontrollers', price: 'Rs. 1,200.00', image: 'https://images.unsplash.com/photo-1517077304055-6e89abf0ceb6?w=400&q=80', description: 'The absolute standard for beginners entering microcontroller programming.' },
-      { id: 118, name: 'ESP32 Development Board Type-C', category: 'Microcontrollers', price: 'Rs. 450.00', image: 'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=400&q=80', description: 'Dual-core processor equipped with built-in Wi-Fi and Bluetooth. Type-C variant.' },
-      { id: 119, name: 'DIY Drone Frame Kit 250mm', category: 'Robotics', price: 'Rs. 2,500.00', image: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=400&q=80', description: 'Carbon fiber drone frame for agile racing or cinematic builds.' },
-      { id: 120, name: 'Ultrasonic Sensor HC-SR04', category: 'Sensors', price: 'Rs. 120.00', image: 'https://images.unsplash.com/photo-1620288627228-769a7c858f96?w=400&q=80', description: 'Accurate distance measuring sensor for obstacle avoidance robotics.' }
+      // Microcontrollers
+      { id: 101, name: 'Arduino Uno R3 Compatible Board', category: 'Microcontrollers', price: 'Rs. 1,200.00', image: 'https://images.unsplash.com/photo-1517077304055-6e89abf0ceb6?w=400&q=80', description: 'The absolute standard for beginners entering microcontroller programming.' },
+      { id: 102, name: 'ESP32 Development Board Type-C', category: 'Microcontrollers', price: 'Rs. 950.00', image: 'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=400&q=80', description: 'Dual-core processor equipped with built-in Wi-Fi and Bluetooth. Type-C variant.' },
+      { id: 103, name: 'Raspberry Pi 4 Model B (4GB)', category: 'Microcontrollers', price: 'Rs. 14,500.00', image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80', description: 'Powerful single-board computer for heavy IoT and processing tasks.' },
+      { id: 104, name: 'NodeMCU ESP8266 Wi-Fi Board', category: 'Microcontrollers', price: 'Rs. 650.00', image: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=400&q=80', description: 'Highly popular Wi-Fi enabled chip for home automation projects.' },
+      { id: 105, name: 'Arduino Mega 2560 R3', category: 'Microcontrollers', price: 'Rs. 2,800.00', image: 'https://images.unsplash.com/photo-1517077304055-6e89abf0ceb6?w=400&q=80', description: 'For projects that require a massive amount of I/O pins.' },
+      
+      // Sensors
+      { id: 201, name: 'Ultrasonic Sensor HC-SR04', category: 'Sensors', price: 'Rs. 120.00', image: 'https://images.unsplash.com/photo-1620288627228-769a7c858f96?w=400&q=80', description: 'Accurate distance measuring sensor for obstacle avoidance robotics.' },
+      { id: 202, name: 'PIR Motion Sensor (HC-SR501)', category: 'Sensors', price: 'Rs. 150.00', image: 'https://images.unsplash.com/photo-1580983584897-40f413ee0c05?w=400&q=80', description: 'Highly sensitive infrared motion detector for security systems.' },
+      { id: 203, name: 'DHT11 Temperature & Humidity', category: 'Sensors', price: 'Rs. 200.00', image: 'https://images.unsplash.com/photo-1608564697071-0f95109bc588?w=400&q=80', description: 'Basic digital temperature and humidity sensor.' },
+      { id: 204, name: 'Soil Moisture Sensor Module', category: 'Sensors', price: 'Rs. 110.00', image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80', description: 'Perfect for automated plant watering systems.' },
+      { id: 205, name: 'MPU6050 Gyroscope & Accelerometer', category: 'Sensors', price: 'Rs. 350.00', image: 'https://images.unsplash.com/photo-1555664424-778a1e5e1b48?w=400&q=80', description: '6-axis motion tracking module for drones and balancing robots.' },
+
+      // Robotics
+      { id: 301, name: 'DIY Drone Frame Kit 250mm', category: 'Robotics', price: 'Rs. 2,500.00', image: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=400&q=80', description: 'Carbon fiber drone frame for agile racing.' },
+      { id: 302, name: 'SG90 Micro Servo Motor 9g', category: 'Robotics', price: 'Rs. 250.00', image: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=400&q=80', description: 'Lightweight and highly responsive micro servo.' },
+      { id: 303, name: 'MG996R High Torque Metal Gear Servo', category: 'Robotics', price: 'Rs. 950.00', image: 'https://images.unsplash.com/photo-1620288627228-769a7c858f96?w=400&q=80', description: 'Heavy duty metal gear servo for robotic arms.' },
+      { id: 304, name: 'L298N Motor Driver Module', category: 'Robotics', price: 'Rs. 350.00', image: 'https://images.unsplash.com/photo-1517077304055-6e89abf0ceb6?w=400&q=80', description: 'Drive two DC motors or one stepper motor easily.' },
+      { id: 305, name: '4WD Smart Robot Car Chassis', category: 'Robotics', price: 'Rs. 1,400.00', image: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=400&q=80', description: 'Complete chassis kit with 4 wheels and motors.' },
+
+      // Displays
+      { id: 401, name: '16x2 LCD Display with I2C Module', category: 'Displays', price: 'Rs. 450.00', image: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=400&q=80', description: 'Standard blue/green LCD screen requires only 4 pins.' },
+      { id: 402, name: '0.96 inch OLED Display I2C', category: 'Displays', price: 'Rs. 550.00', image: 'https://images.unsplash.com/photo-1608564697071-0f95109bc588?w=400&q=80', description: 'Crisp and clear mini OLED display.' },
+      { id: 403, name: 'Nextion 2.4" HMI Touch Display', category: 'Displays', price: 'Rs. 3,500.00', image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80', description: 'Advanced touch screen display for custom user interfaces.' },
+
+      // ICs & Chips
+      { id: 501, name: 'NE555 Timer IC (DIP-8)', category: 'ICs & Chips', price: 'Rs. 15.00', image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80', description: 'The classic 555 timer chip. Create oscillators, delays, and PWM signals.' },
+      { id: 502, name: 'LM358 Operational Amplifier', category: 'ICs & Chips', price: 'Rs. 20.00', image: 'https://images.unsplash.com/photo-1608564697071-0f95109bc588?w=400&q=80', description: 'Dual low power operational amplifier.' },
+      { id: 503, name: 'ATmega328P-PU with Bootloader', category: 'ICs & Chips', price: 'Rs. 450.00', image: 'https://images.unsplash.com/photo-1517077304055-6e89abf0ceb6?w=400&q=80', description: 'The standalone brain of the Arduino Uno.' },
+
+      // Resistors, Capacitors & Breadboards
+      { id: 601, name: '10k ohm, 1/4 Watt Resistor (Pack of 10)', category: 'Resistors', price: 'Rs. 10.00', image: 'https://images.unsplash.com/photo-1580983584897-40f413ee0c05?w=400&q=80', description: 'Essential for pull-up and pull-down configurations in digital circuits.' },
+      { id: 602, name: '1000uF 25V Electrolytic Capacitor', category: 'Capacitors', price: 'Rs. 30.00', image: 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=400&q=80', description: 'Bulk decoupling and power supply smoothing capacitors.' },
+      { id: 603, name: '400 Tie Point Solderless Breadboard', category: 'Breadboards', price: 'Rs. 180.00', image: 'https://images.unsplash.com/photo-1620288627228-769a7c858f96?w=400&q=80', description: 'Standard half-size breadboard for prototyping.' },
+      { id: 604, name: '830 Tie Point Solderless Breadboard', category: 'Breadboards', price: 'Rs. 300.00', image: 'https://images.unsplash.com/photo-1555664424-778a1e5e1b48?w=400&q=80', description: 'Full-size breadboard with power rails.' },
+
+      // Tools
+      { id: 701, name: 'Digital Multimeter (DT-830B)', category: 'Tools', price: 'Rs. 850.00', image: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=400&q=80', description: 'Essential diagnostic tool for voltage, current, and continuity.' },
+      { id: 702, name: '60W Adjustable Soldering Iron', category: 'Tools', price: 'Rs. 750.00', image: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=400&q=80', description: 'Temperature controlled soldering iron for precision work.' },
+      { id: 703, name: 'Jumper Wires (M-M, M-F, F-F) 40pcs', category: 'Tools', price: 'Rs. 150.00', image: 'https://images.unsplash.com/photo-1517077304055-6e89abf0ceb6?w=400&q=80', description: 'Dupont cables for breadboard connections.' }
     ];
 
     let dbProducts = JSON.parse(localStorage.getItem('ktronic_products'));
@@ -49,6 +95,7 @@ export default function Catalog() {
       dbCategoryDetails = massiveDefaultCategoriesDetails;
     }
 
+    // Auto-fix currency symbols on load
     let needsUpdate = false;
     dbProducts = dbProducts.map(p => {
       if (p.price && p.price.includes('₹')) {
@@ -123,41 +170,38 @@ export default function Catalog() {
     return matchesCat && matchesSearch;
   });
 
-  // Updated to show 8 products instead of 5
   const newlyAddedProducts = [...products].sort((a, b) => b.id - a.id).slice(0, 8);
-  
   const activeCategoriesWithProducts = categories.filter(c => c !== 'All' && products.some(p => p.category === c));
 
+  // --- PERFECT FIXED SIZED CARDS ---
   const renderCardStyleEcommerce = (product, idx) => (
-    <div key={product.id} onClick={() => setSelectedProduct(product)} className="bg-white/90 backdrop-blur-xl border border-white/60 shadow-[0_4px_24px_rgba(0,0,0,0.04)] rounded-3xl flex flex-col hover:border-[#45c4f0]/60 hover:shadow-[0_20px_40px_-10px_rgba(42,100,246,0.15)] transition-all duration-300 relative group overflow-hidden cursor-pointer">
+    <div key={product.id} onClick={() => setSelectedProduct(product)} className="w-[280px] h-[390px] shrink-0 bg-white/90 backdrop-blur-xl border border-white/60 shadow-sm rounded-[24px] flex flex-col hover:border-[#45c4f0]/60 hover:shadow-[0_20px_40px_-10px_rgba(42,100,246,0.15)] transition-all duration-300 relative group overflow-hidden cursor-pointer snap-start">
       
-      <div className="absolute top-3 left-3 z-10">
-        {idx % 2 === 0 && <span className="bg-gradient-to-r from-[#2ed573] to-[#27ae60] text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">NEW</span>}
+      <div className="absolute top-4 left-4 z-10">
+        {idx % 2 === 0 && <span className="bg-gradient-to-r from-[#2ed573] to-[#27ae60] text-white text-[10px] font-black px-3 py-1 rounded-full shadow-sm">NEW</span>}
       </div>
 
-      <div className="absolute top-3 right-3 z-10 flex flex-col gap-2 translate-x-12 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300 ease-out">
-         <button className="bg-white text-slate-400 hover:text-[#2a64f6] hover:bg-[#eef6ff] transition-colors p-2.5 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.1)]" onClick={(e) => handleAddToCart(e, product)}>
+      <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 translate-x-12 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300 ease-out">
+         <button className="bg-white/90 backdrop-blur text-slate-500 hover:text-[#2a64f6] hover:bg-white p-2.5 rounded-full shadow-md transition-colors" onClick={(e) => handleAddToCart(e, product)}>
            <ShoppingCart size={16} strokeWidth={2.5}/>
          </button>
-         <button className="bg-white text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors p-2.5 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.1)]" onClick={(e) => handleAddToWishlist(e, product)}>
+         <button className="bg-white/90 backdrop-blur text-slate-500 hover:text-rose-500 hover:bg-white p-2.5 rounded-full shadow-md transition-colors" onClick={(e) => handleAddToWishlist(e, product)}>
            <Heart size={16} strokeWidth={2.5}/>
          </button>
       </div>
 
-      <div className="relative w-full aspect-square bg-[#f8fafc]/80 flex items-center justify-center p-6 mb-2 border-b border-slate-100/50">
-        <img src={product.image} className="max-w-full max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500 ease-out drop-shadow-sm" alt={product.name} />
+      {/* Full width Fixed Image Box */}
+      <div className="w-full h-[220px] bg-[#f8fafc] flex items-center justify-center overflow-hidden border-b border-slate-100/50">
+        <img src={product.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" alt={product.name} />
       </div>
 
-      <div className="px-6 pt-3 pb-6 flex flex-col flex-grow text-left">
-        <p className="text-[10px] font-black text-[#45c4f0] uppercase tracking-widest mb-1.5 line-clamp-1">{product.category}</p>
-        <span className="font-black text-slate-800 text-[16px] leading-snug mb-4 line-clamp-2 group-hover:text-[#2a64f6] transition-colors">{product.name}</span>
+      <div className="p-5 flex flex-col flex-grow text-left">
+        <p className="text-[10px] font-black text-[#45c4f0] uppercase tracking-widest mb-1 line-clamp-1">{product.category}</p>
+        <span className="font-black text-slate-800 text-[16px] leading-snug mb-3 line-clamp-2 group-hover:text-[#2a64f6] transition-colors">{product.name}</span>
         
         <div className="mt-auto flex items-end justify-between">
-          <div>
-            <p className="text-[11px] text-slate-400 font-bold mb-0.5">Price</p>
-            <p className="font-black text-slate-900 text-[20px] leading-none tracking-tight">{product.price}</p>
-          </div>
-          <p className="text-[10px] font-black text-[#2ed573] bg-[#2ed573]/10 border border-[#2ed573]/20 px-2.5 py-1 rounded-md">IN STOCK</p>
+          <p className="font-black text-slate-900 text-[20px] leading-none tracking-tight">{product.price}</p>
+          <p className="text-[10px] font-black text-[#2ed573] bg-[#2ed573]/10 px-2.5 py-1 rounded-md">IN STOCK</p>
         </div>
       </div>
     </div>
@@ -220,48 +264,25 @@ export default function Catalog() {
   return (
     <div className="min-h-screen font-nunito text-slate-800 pb-20 relative bg-[#f4f7f9] overflow-hidden z-10">
       
-      <div 
-        className="fixed inset-0 z-[-2] opacity-[0.04] pointer-events-none mix-blend-multiply"
-        style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1518770660439-4636190af475?w=2000&q=80')",
-          backgroundAttachment: "fixed",
-          backgroundSize: "cover",
-          backgroundPosition: "center"
-        }}
-      ></div>
-
+      {/* Background Orbs */}
       <div className="fixed inset-0 z-[-1] overflow-hidden pointer-events-none mix-blend-normal">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#45c4f0]/20 rounded-full blur-[120px]"></div>
           <div className="absolute top-[40%] right-[-10%] w-[30%] h-[50%] bg-[#2a64f6]/10 rounded-full blur-[120px]"></div>
-          <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[30%] bg-purple-500/5 rounded-full blur-[120px]"></div>
       </div>
 
-      <a href="https://wa.me/923111486790" target="_blank" rel="noopener noreferrer" className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 group flex items-center justify-center w-[54px] h-[54px] sm:w-[64px] sm:h-[64px] animate-bounce hover:animate-none">
-        <div className="absolute inset-0 bg-[#25D366] rounded-full animate-ping opacity-60 group-hover:opacity-0 transition-opacity"></div>
-        <div className="absolute inset-0 bg-slate-200 rounded-full translate-y-1 translate-x-1 sm:translate-y-1.5 sm:translate-x-1.5 group-hover:translate-y-2.5 group-hover:translate-x-2.5 transition-transform duration-300 shadow-sm"></div>
-        <div className="relative bg-[#25D366] text-white w-full h-full rounded-full shadow-lg group-hover:-translate-y-1 group-hover:-translate-x-1 transition-transform duration-300 flex items-center justify-center">
-          <svg viewBox="0 0 24 24" className="w-[32px] h-[32px] sm:w-[42px] sm:h-[42px] fill-current -ml-0.5 -mt-0.5">
-             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-          </svg>
-        </div>
-      </a>
-
-      <div className="max-w-[1300px] mx-auto px-6 lg:px-12 py-8 relative z-10">
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-8 relative z-10">
         
         {isNewView ? (
           <div className="animate-fade-in-up">
-            <div className="flex items-center justify-between mb-8">
-              <h1 className="text-3xl sm:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#2a64f6] to-[#45c4f0] animate-gradient-text flex items-center gap-3">
-                <span className="bg-rose-500 text-white text-[11px] px-3 py-1 rounded-full animate-pulse tracking-wider shadow-sm">NEW ARRIVALS</span> Freshly Added
-              </h1>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <h1 className="text-3xl font-black mb-8">New Arrivals</h1>
+            <div className="flex flex-wrap gap-6 justify-center">
               {newlyAddedProducts.map((p, i) => renderCardStyleEcommerce(p, i))}
             </div>
           </div>
         ) : activeCategory === 'All' && !searchQuery ? (
           <div className="space-y-16 animate-fade-in-up">
             
+            {/* RESTORED HERO SECTION */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="relative w-full h-[300px] sm:h-[400px] rounded-[32px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
                 {carouselSlides.map((slide, index) => (
@@ -303,21 +324,27 @@ export default function Catalog() {
               </div>
             </div>
 
+            {/* Scrollable Categories List */}
             {categoryDetails.length > 0 && (
-              <div className="pt-4">
-                <h2 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#2a64f6] to-[#45c4f0] animate-gradient-text mb-8 tracking-tight">Browse Categories</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
-                  {categoryDetails.slice(0, 6).map((cat) => {
+              <div className="pt-4 relative group/cat">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#2a64f6] to-[#45c4f0] animate-gradient-text">Browse Categories</h2>
+                  <div className="flex gap-2">
+                    <button onClick={() => scrollContainer(categoryScrollRef.current, 'left')} className="p-3 bg-white/90 backdrop-blur-md rounded-full shadow-sm hover:text-[#45c4f0] hover:shadow-md transition-all"><ChevronLeft size={20}/></button>
+                    <button onClick={() => scrollContainer(categoryScrollRef.current, 'right')} className="p-3 bg-white/90 backdrop-blur-md rounded-full shadow-sm hover:text-[#45c4f0] hover:shadow-md transition-all"><ChevronRight size={20}/></button>
+                  </div>
+                </div>
+                
+                <div ref={categoryScrollRef} className="flex gap-6 overflow-x-auto snap-x custom-scrollbar pb-4 -mx-4 px-4 scroll-smooth">
+                  {categoryDetails.map((cat) => {
                     const count = products.filter(p => p.category === cat.name).length;
                     return (
-                      <Link to={`/?category=${encodeURIComponent(cat.name)}`} key={cat.name} className="bg-white/90 backdrop-blur-md rounded-[24px] p-5 text-center hover:shadow-[0_12px_40px_rgba(42,100,246,0.15)] hover:border-[#45c4f0]/50 hover:-translate-y-1 transition-all flex flex-col items-center justify-center gap-4 border border-white/50 shadow-sm">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[20px] overflow-hidden mb-1 shadow-inner bg-slate-50 flex items-center justify-center">
+                      <Link to={`/?category=${encodeURIComponent(cat.name)}`} key={cat.name} className="w-[180px] shrink-0 snap-start bg-white/90 backdrop-blur-md rounded-[24px] p-5 text-center hover:-translate-y-2 transition-transform border border-white/50 shadow-sm flex flex-col items-center cursor-pointer">
+                        <div className="w-20 h-20 rounded-[20px] overflow-hidden mb-4 shadow-inner bg-slate-50 flex items-center justify-center">
                           {cat.image ? <img src={cat.image} className="w-full h-full object-cover" alt={cat.name}/> : <span className="text-slate-400 font-black text-2xl">{cat.name.charAt(0)}</span>}
                         </div>
-                        <div className="flex flex-col">
-                          <span className="font-black text-[15px] text-slate-900 line-clamp-1">{cat.name}</span>
-                          <span className="text-[12px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{count} Products</span>
-                        </div>
+                        <span className="font-black text-[15px] text-slate-900 line-clamp-1">{cat.name}</span>
+                        <span className="text-[12px] font-bold text-slate-400 uppercase">{count} Items</span>
                       </Link>
                     )
                   })}
@@ -325,28 +352,22 @@ export default function Catalog() {
               </div>
             )}
 
-            {newlyAddedProducts.length > 0 && (
-              <div className="pt-4">
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#2a64f6] to-[#45c4f0] animate-gradient-text tracking-tight">Freshly Added</h2>
-                  <Link to="/?view=new" className="text-[13px] sm:text-[14px] font-bold text-[#45c4f0] bg-white/90 backdrop-blur-md border border-slate-200/50 px-5 py-2.5 rounded-full hover:shadow-md transition-all flex items-center gap-1.5 shadow-sm">View All <ArrowRight size={14}/></Link>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {newlyAddedProducts.map((p, i) => renderCardStyleEcommerce(p, i))}
-                </div>
-              </div>
-            )}
-
+            {/* Scrollable Category Showcases */}
             <div className="pt-4 space-y-16">
               {activeCategoriesWithProducts.map((cat) => {
-                const catProducts = products.filter(p => p.category === cat).slice(0, 4); 
+                const catProducts = products.filter(p => p.category === cat); 
                 return (
-                  <div key={cat}>
+                  <div key={cat} className="relative group/showcase">
                     <div className="flex items-center justify-between mb-8">
                       <h2 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#2a64f6] to-[#45c4f0] animate-gradient-text tracking-tight">{cat} Essentials</h2>
-                      <Link to={`/?category=${encodeURIComponent(cat)}`} className="text-[13px] sm:text-[14px] font-bold text-slate-500 bg-white/90 backdrop-blur-md border border-slate-200/50 px-5 py-2.5 rounded-full hover:shadow-md transition-all shadow-sm">Explore Catalog</Link>
+                      <div className="flex gap-2 opacity-0 group-hover/showcase:opacity-100 transition-opacity">
+                        <button onClick={() => scrollContainer(productRefs.current[cat], 'left')} className="p-3 bg-white/90 backdrop-blur-md rounded-full shadow-sm hover:text-[#45c4f0] hover:shadow-md transition-all"><ChevronLeft size={20}/></button>
+                        <button onClick={() => scrollContainer(productRefs.current[cat], 'right')} className="p-3 bg-white/90 backdrop-blur-md rounded-full shadow-sm hover:text-[#45c4f0] hover:shadow-md transition-all"><ChevronRight size={20}/></button>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    
+                    {/* Horizontal Product Scroll */}
+                    <div ref={el => productRefs.current[cat] = el} className="flex gap-6 overflow-x-auto snap-x custom-scrollbar pb-8 -mx-4 px-4 scroll-smooth">
                       {catProducts.map((p, i) => renderCardStyleEcommerce(p, i))}
                     </div>
                   </div>
@@ -357,19 +378,10 @@ export default function Catalog() {
           </div>
         ) : (
           <div className="animate-fade-in-up">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
-              <h1 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#2a64f6] to-[#45c4f0] animate-gradient-text tracking-tight">{searchQuery ? `Search Results for "${searchQuery}"` : activeCategory}</h1>
-              <div className="text-[14px] sm:text-[15px] font-bold text-[#2a64f6] bg-[#eef6ff] px-5 py-2.5 rounded-full w-max shadow-sm tracking-wide border border-[#2a64f6]/20">Showing {filteredProducts.length} results</div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <h1 className="text-3xl font-black mb-8">{activeCategory}</h1>
+            <div className="flex flex-wrap gap-6 justify-center">
               {filteredProducts.map((p, i) => renderCardStyleEcommerce(p, i))}
             </div>
-            {filteredProducts.length === 0 && (
-              <div className="text-center py-16 sm:py-24 bg-white/50 backdrop-blur-md rounded-[32px] border border-white mt-8 shadow-sm">
-                <p className="text-xl sm:text-2xl font-black text-slate-900 mb-3">No products found.</p>
-                <p className="text-slate-500 text-base sm:text-lg font-bold px-4">Try checking a different category or refining your search.</p>
-              </div>
-            )}
           </div>
         )}
       </div>

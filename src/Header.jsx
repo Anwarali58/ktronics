@@ -10,6 +10,13 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeHoverCategory, setActiveHoverCategory] = useState(null);
   
+  // Dynamic Site Settings
+  const [siteSettings, setSiteSettings] = useState({
+    siteName: 'Ktronics',
+    phone: '+92 311 1486790',
+    email: 'support@ktronics.tech'
+  });
+
   const [currentUser, setCurrentUser] = useState(localStorage.getItem('currentUser'));
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSignUpMode, setIsSignUpMode] = useState(false);
@@ -24,10 +31,15 @@ export default function Header() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
 
-  const updateCartAndWishlist = () => {
+  const loadData = () => {
+    const storedSettings = JSON.parse(localStorage.getItem('ktronic_settings'));
+    if (storedSettings) setSiteSettings(storedSettings);
+
+    const dbCategories = JSON.parse(localStorage.getItem('ktronic_categories')) || [];
+    setCategories(dbCategories);
+
     const cart = JSON.parse(localStorage.getItem('ktronic_cart')) || [];
     const wishlist = JSON.parse(localStorage.getItem('ktronic_wishlist')) || [];
-    
     setCartItems(cart);
     setWishlistItems(wishlist);
 
@@ -38,23 +50,22 @@ export default function Header() {
     setCartTotal(total.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   };
 
-  const loadCategories = () => {
-    const dbCategories = JSON.parse(localStorage.getItem('ktronic_categories')) || [];
-    setCategories(dbCategories);
-  };
-
   useEffect(() => {
-    loadCategories();
-    updateCartAndWishlist();
-
-    window.addEventListener('storage', loadCategories); 
-    window.addEventListener('cartUpdated', updateCartAndWishlist);
-    window.addEventListener('wishlistUpdated', updateCartAndWishlist);
+    loadData();
+    window.addEventListener('storage', loadData); 
+    window.addEventListener('cartUpdated', loadData);
+    window.addEventListener('wishlistUpdated', loadData);
+    window.addEventListener('settingsUpdated', loadData);
+    
+    const handleOpenLogin = () => setIsLoginModalOpen(true);
+    window.addEventListener('openLogin', handleOpenLogin);
 
     return () => {
-      window.removeEventListener('storage', loadCategories);
-      window.removeEventListener('cartUpdated', updateCartAndWishlist);
-      window.removeEventListener('wishlistUpdated', updateCartAndWishlist);
+      window.removeEventListener('storage', loadData);
+      window.removeEventListener('cartUpdated', loadData);
+      window.removeEventListener('wishlistUpdated', loadData);
+      window.removeEventListener('settingsUpdated', loadData);
+      window.removeEventListener('openLogin', handleOpenLogin);
     };
   }, []);
 
@@ -121,7 +132,7 @@ export default function Header() {
     const updated = [...cartItems];
     updated.splice(index, 1);
     localStorage.setItem('ktronic_cart', JSON.stringify(updated));
-    updateCartAndWishlist();
+    loadData();
   };
 
   const removeFromWishlist = (e, index) => {
@@ -129,7 +140,7 @@ export default function Header() {
     const updated = [...wishlistItems];
     updated.splice(index, 1);
     localStorage.setItem('ktronic_wishlist', JSON.stringify(updated));
-    updateCartAndWishlist();
+    loadData();
   };
 
   const handleProceedToItemDetail = (item) => {
@@ -145,7 +156,7 @@ export default function Header() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap');
         .font-nunito { font-family: 'Nunito', sans-serif; }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         @keyframes gradient-shimmer { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         .animate-gradient-text { background-size: 200% auto; animation: gradient-shimmer 3s linear infinite; }
@@ -161,8 +172,8 @@ export default function Header() {
                <div className="absolute -top-24 -left-24 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
                <div className="absolute bottom-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-3xl translate-x-1/3 translate-y-1/3"></div>
                <div className="relative z-10">
-                 <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center mb-8 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
-                   <span className="text-[#2a64f6] font-black text-3xl">K</span>
+                 <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center mb-8 shadow-sm">
+                   <span className="text-[#2a64f6] font-black text-3xl">{siteSettings.siteName.charAt(0)}</span>
                  </div>
                  <h2 className="text-4xl font-black text-white leading-tight mb-4 tracking-tight">
                    {isSignUpMode ? 'Join the Innovation.' : 'Welcome Back.'}
@@ -176,8 +187,8 @@ export default function Header() {
             <div className="w-full md:w-1/2 p-8 md:p-12 relative bg-white flex flex-col justify-center">
               <button onClick={() => { setIsLoginModalOpen(false); setAuthError(''); setAuthSuccess(''); }} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 bg-slate-50 hover:bg-rose-50 p-2.5 rounded-full transition-colors"><X size={20}/></button>
               <div className="md:hidden flex items-center gap-3 mb-8">
-                 <div className="h-10 w-10 bg-[#45c4f0] rounded-xl flex items-center justify-center shadow-sm"><span className="text-white font-black text-2xl">K</span></div>
-                 <span className="text-2xl font-black text-[#45c4f0]">Ktronics</span>
+                 <div className="h-10 w-10 bg-[#45c4f0] rounded-xl flex items-center justify-center shadow-sm"><span className="text-white font-black text-2xl">{siteSettings.siteName.charAt(0)}</span></div>
+                 <span className="text-2xl font-black text-[#45c4f0]">{siteSettings.siteName}</span>
               </div>
               <h3 className="text-[28px] font-black text-slate-900 mb-1 tracking-tight">{isSignUpMode ? 'Create Account' : 'Sign In'}</h3>
               <p className="text-slate-500 font-bold mb-6 text-[15px]">{isSignUpMode ? 'Please fill your details below.' : 'Enter your credentials to continue.'}</p>
@@ -335,9 +346,9 @@ export default function Header() {
         <div className="max-w-[1500px] w-full mx-auto px-4 sm:px-6 py-4 flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-6">
           <div className="flex items-center justify-between w-full lg:w-auto">
             <Link to="/" className="flex items-center gap-2 shrink-0">
-              <div className="h-10 w-10 bg-[#45c4f0] rounded flex items-center justify-center"><span className="text-white font-black text-2xl">K</span></div>
+              <div className="h-10 w-10 bg-[#45c4f0] rounded flex items-center justify-center"><span className="text-white font-black text-2xl">{siteSettings.siteName.charAt(0)}</span></div>
               <div className="flex flex-col">
-                <span className="text-2xl font-black text-[#45c4f0] leading-none tracking-tight">Ktronics</span>
+                <span className="text-2xl font-black text-[#45c4f0] leading-none tracking-tight">{siteSettings.siteName}</span>
                 <span className="text-[10px] text-slate-400 font-bold tracking-widest">EXPLORE • LEARN • BUILD</span>
               </div>
             </Link>
@@ -358,13 +369,13 @@ export default function Header() {
           </form>
 
           <div className="hidden lg:flex items-center gap-8 shrink-0 order-2 lg:order-3">
-            <a href="tel:+923111486790" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <a href={`tel:${siteSettings.phone.replace(/[^0-9+]/g, '')}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <HeadphonesIcon size={28} className="text-slate-700 stroke-1" />
-              <div className="flex flex-col"><span className="text-[13px] font-bold text-slate-700">Customer Support</span><span className="text-[15px] font-black text-[#2a64f6]">+92 311 1486790</span></div>
+              <div className="flex flex-col"><span className="text-[13px] font-bold text-slate-700">Customer Support</span><span className="text-[15px] font-black text-[#2a64f6]">{siteSettings.phone}</span></div>
             </a>
-            <a href="mailto:support@ktronics.org" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <a href={`mailto:${siteSettings.email}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <Mail size={28} className="text-slate-700 stroke-1" />
-              <div className="flex flex-col"><span className="text-[13px] font-bold text-slate-700">Email Us</span><span className="text-[15px] font-black text-[#2a64f6]">support@ktronics.tech</span></div>
+              <div className="flex flex-col"><span className="text-[13px] font-bold text-slate-700">Email Us</span><span className="text-[15px] font-black text-[#2a64f6]">{siteSettings.email}</span></div>
             </a>
           </div>
         </div>
@@ -425,6 +436,7 @@ export default function Header() {
           </div>
         </div>
 
+        {/* Mobile Nav Menu */}
         {isMobileMenuOpen && (
           <div className="lg:hidden bg-white border-t border-slate-100 p-4 absolute top-[100%] left-0 w-full shadow-[0_10px_25px_rgba(0,0,0,0.1)] z-50">
             <nav className="flex flex-col gap-2">
