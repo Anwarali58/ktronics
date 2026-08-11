@@ -1,16 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Trash2, Save, FileText, Box, Pencil, X, FolderKanban, Upload, Image as ImageIcon, Settings, Lock, LogOut } from 'lucide-react';
-import { supabase } from './supabaseClient'; // Ensure this points to your client file
+import { supabase } from './supabaseClient'; 
 
 export default function Admin() {
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(localStorage.getItem('ktronic_admin_auth') === 'true');
+  // --- ADMIN AUTHENTICATION (Now strictly Session-Based) ---
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(sessionStorage.getItem('ktronic_admin_auth') === 'true');
   const [loginPass, setLoginPass] = useState('');
+
+  // --- DASHBOARD STATES ---
   const [activeTab, setActiveTab] = useState('products');
   
   const [products, setProducts] = useState([]);
   const [categoryDetails, setCategoryDetails] = useState([]);
   const [blogs, setBlogs] = useState([]);
   
+  // Settings State 
   const [siteSettings, setSiteSettings] = useState({
     siteName: 'Ktronics', phone: '+92 311 1486790', email: 'support@ktronics.tech', address: '',
     facebook: '', instagram: '', twitter: '', pinterest: '', linkedin: '', youtube: '', tiktok: ''
@@ -47,13 +51,16 @@ export default function Admin() {
   };
 
   useEffect(() => {
-    if (isAdminLoggedIn) fetchAdminData();
+    // Only fetch the sensitive data if they are actually logged in
+    if (isAdminLoggedIn) {
+      fetchAdminData();
+    }
   }, [isAdminLoggedIn]);
 
   const handleAdminLogin = (e) => {
     e.preventDefault();
     if (loginPass === 'admin123') {
-      localStorage.setItem('ktronic_admin_auth', 'true');
+      sessionStorage.setItem('ktronic_admin_auth', 'true');
       setIsAdminLoggedIn(true);
     } else {
       alert('Incorrect master password!');
@@ -61,7 +68,7 @@ export default function Admin() {
   };
 
   const handleAdminLogout = () => {
-    localStorage.removeItem('ktronic_admin_auth');
+    sessionStorage.removeItem('ktronic_admin_auth');
     setIsAdminLoggedIn(false);
     setLoginPass('');
   };
@@ -163,7 +170,7 @@ export default function Admin() {
     };
 
     if (editingBlogId) {
-      delete payload.date; // Preserve original date
+      delete payload.date; 
       const { error } = await supabase.from('blogs').update(payload).eq('id', editingBlogId);
       if (error) return alert(error.message);
     } else {
@@ -201,9 +208,14 @@ export default function Admin() {
     };
     const { error } = await supabase.from('site_settings').upsert(payload);
     if(error) return alert(error.message);
+    
+    // Update local cache so Header/Footer notice the change immediately
+    localStorage.setItem('ktronic_settings', JSON.stringify(siteSettings));
+    window.dispatchEvent(new Event('settingsUpdated'));
     alert("Global Site Settings updated in Supabase!");
   };
 
+  // --- LOGIN SCREEN RENDER ---
   if (!isAdminLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-nunito p-4">
