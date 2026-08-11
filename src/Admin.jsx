@@ -1,34 +1,21 @@
 import { useState, useEffect } from 'react';
-import { Trash2, Plus, Save, FileText, Box, Pencil, X, Filter, FolderKanban, Upload, Image as ImageIcon, Settings, Lock, LogOut } from 'lucide-react';
+import { Trash2, Save, FileText, Box, Pencil, X, FolderKanban, Upload, Image as ImageIcon, Settings, Lock, LogOut } from 'lucide-react';
+import { supabase } from './supabaseClient'; // Ensure this points to your client file
 
 export default function Admin() {
-  // --- ADMIN AUTHENTICATION ---
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(localStorage.getItem('ktronic_admin_auth') === 'true');
   const [loginPass, setLoginPass] = useState('');
-
-  // --- DASHBOARD STATES ---
   const [activeTab, setActiveTab] = useState('products');
   
   const [products, setProducts] = useState([]);
   const [categoryDetails, setCategoryDetails] = useState([]);
   const [blogs, setBlogs] = useState([]);
   
-  // Settings State - Expanded to include all social links
   const [siteSettings, setSiteSettings] = useState({
-    siteName: 'Ktronics',
-    phone: '+92 311 1486790',
-    email: 'support@ktronics.tech',
-    address: 'Tech Hub, Building 4, Innovation Dist.',
-    facebook: '',
-    instagram: '',
-    twitter: '',
-    pinterest: '',
-    linkedin: '',
-    youtube: '',
-    tiktok: ''
+    siteName: 'Ktronics', phone: '+92 311 1486790', email: 'support@ktronics.tech', address: '',
+    facebook: '', instagram: '', twitter: '', pinterest: '', linkedin: '', youtube: '', tiktok: ''
   });
 
-  // Form States
   const [productForm, setProductForm] = useState({ name: '', category: '', price: '', description: '', image: '', productUrl: '' });
   const [categoryForm, setCategoryForm] = useState({ name: '', image: '' });
   const [blogForm, setBlogForm] = useState({ title: '', category: '', date: '', snippet: '', image: '' });
@@ -36,28 +23,32 @@ export default function Admin() {
   const [editingProductId, setEditingProductId] = useState(null);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingBlogId, setEditingBlogId] = useState(null);
-  
   const [productFilter, setProductFilter] = useState('All');
 
-  useEffect(() => {
-    // Load Database
-    const dbProducts = JSON.parse(localStorage.getItem('ktronic_products')) || [];
-    let dbCategoryDetails = JSON.parse(localStorage.getItem('ktronic_category_details')) || [];
-    const dbBlogs = JSON.parse(localStorage.getItem('ktronic_blogs')) || [];
-    const dbSettings = JSON.parse(localStorage.getItem('ktronic_settings'));
+  const fetchAdminData = async () => {
+    const { data: prodData } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    const { data: catData } = await supabase.from('categories').select('*');
+    const { data: blogData } = await supabase.from('blogs').select('*').order('id', { ascending: false });
+    const { data: settingsData } = await supabase.from('site_settings').select('*').eq('id', 1).single();
 
-    // Fix to ensure seeded categories show up if Admin tries to load before Catalog
-    if (dbCategoryDetails.length === 0) {
-      const oldCategories = JSON.parse(localStorage.getItem('ktronic_categories')) || ['Microcontrollers', 'Sensors', 'Robotics', 'Projects', 'IoT'];
-      dbCategoryDetails = oldCategories.map(c => ({ name: c, image: '' }));
-      localStorage.setItem('ktronic_category_details', JSON.stringify(dbCategoryDetails));
+    if (prodData) {
+      setProducts(prodData.map(p => ({...p, productUrl: p.product_url})));
     }
+    if (catData) setCategoryDetails(catData);
+    if (blogData) setBlogs(blogData);
+    if (settingsData) {
+      setSiteSettings({
+        siteName: settingsData.site_name || '', phone: settingsData.phone || '', email: settingsData.email || '',
+        address: settingsData.address || '', facebook: settingsData.facebook || '', instagram: settingsData.instagram || '',
+        twitter: settingsData.twitter || '', pinterest: settingsData.pinterest || '', linkedin: settingsData.linkedin || '',
+        youtube: settingsData.youtube || '', tiktok: settingsData.tiktok || ''
+      });
+    }
+  };
 
-    setProducts(dbProducts);
-    setCategoryDetails(dbCategoryDetails);
-    setBlogs(dbBlogs);
-    if (dbSettings) setSiteSettings(prev => ({...prev, ...dbSettings}));
-  }, []);
+  useEffect(() => {
+    if (isAdminLoggedIn) fetchAdminData();
+  }, [isAdminLoggedIn]);
 
   const handleAdminLogin = (e) => {
     e.preventDefault();
@@ -75,23 +66,10 @@ export default function Admin() {
     setLoginPass('');
   };
 
-  const safeStorageSave = (key, data) => {
-    try {
-      localStorage.setItem(key, JSON.stringify(data));
-      window.dispatchEvent(new Event('storage'));
-      return true;
-    } catch (e) {
-      alert("⚠️ Storage Limit Exceeded! The image file you uploaded is too large. Please use an image under 500kb or paste an Image URL instead.");
-      return false;
-    }
-  };
-
   const handleImageUpload = (e, formType) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 2000000) {
-         alert("Warning: This image is over 2MB. It may not save correctly. We recommend using images under 500kb or using a URL.");
-      }
+      if (file.size > 2000000) alert("Warning: This image is over 2MB. Use images under 500kb or a URL.");
       const reader = new FileReader();
       reader.onloadend = () => {
         if (formType === 'product') setProductForm({ ...productForm, image: reader.result });
@@ -102,24 +80,28 @@ export default function Admin() {
     }
   };
 
-  // --- PRODUCT MANAGEMENT ---
-  const handleProductSubmit = (e) => {
+  // --- SUPABASE PRODUCT MANAGEMENT ---
+  const handleProductSubmit = async (e) => {
     e.preventDefault();
-    if (!productForm.image || productForm.image.trim() === '') return alert("⚠️ Product Image is compulsory!");
+    if (!productForm.image) return alert("⚠️ Product Image is compulsory!");
 
-    let updatedProducts;
+    const payload = {
+      name: productForm.name, category: productForm.category, price: productForm.price,
+      description: productForm.description, image: productForm.image, product_url: productForm.productUrl
+    };
+
     if (editingProductId) {
-      updatedProducts = products.map(p => p.id === editingProductId ? { ...productForm, id: editingProductId } : p);
+      const { error } = await supabase.from('products').update(payload).eq('id', editingProductId);
+      if (error) return alert(error.message);
     } else {
-      updatedProducts = [{ ...productForm, id: Date.now() }, ...products];
+      const { error } = await supabase.from('products').insert([payload]);
+      if (error) return alert(error.message);
     }
     
-    if (safeStorageSave('ktronic_products', updatedProducts)) {
-      setProducts(updatedProducts);
-      setProductForm({ name: '', category: '', price: '', description: '', image: '', productUrl: '' });
-      setEditingProductId(null);
-      alert(editingProductId ? 'Product updated successfully!' : 'Product added successfully!');
-    }
+    setProductForm({ name: '', category: '', price: '', description: '', image: '', productUrl: '' });
+    setEditingProductId(null);
+    fetchAdminData();
+    alert('Product saved successfully!');
   };
 
   const handleEditProduct = (product) => {
@@ -128,39 +110,33 @@ export default function Admin() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDeleteProduct = (id) => {
-    if(window.confirm("Are you sure you want to permanently delete this product?")) {
-      const updated = products.filter(p => p.id !== id);
-      setProducts(updated);
-      safeStorageSave('ktronic_products', updated);
+  const handleDeleteProduct = async (id) => {
+    if(window.confirm("Permanently delete this product from the database?")) {
+      await supabase.from('products').delete().eq('id', id);
+      fetchAdminData();
     }
   };
 
-  // --- CATEGORY MANAGEMENT ---
-  const handleCategorySubmit = (e) => {
+  // --- SUPABASE CATEGORY MANAGEMENT ---
+  const handleCategorySubmit = async (e) => {
     e.preventDefault();
-    if (!categoryForm.image || categoryForm.image.trim() === '') return alert("⚠️ Category Cover Image is compulsory!");
+    if (!categoryForm.image) return alert("⚠️ Category Cover Image is compulsory!");
 
-    let updatedDetails;
     if (editingCategoryId) {
+      const { error } = await supabase.from('categories').update({ name: categoryForm.name, image: categoryForm.image }).eq('name', editingCategoryId);
+      if (error) return alert(error.message);
       if (editingCategoryId !== categoryForm.name) {
-        const updatedProducts = products.map(p => p.category === editingCategoryId ? { ...p, category: categoryForm.name } : p);
-        setProducts(updatedProducts);
-        safeStorageSave('ktronic_products', updatedProducts);
+        await supabase.from('products').update({ category: categoryForm.name }).eq('category', editingCategoryId);
       }
-      updatedDetails = categoryDetails.map(c => c.name === editingCategoryId ? { name: categoryForm.name, image: categoryForm.image } : c);
     } else {
-      if (categoryDetails.some(c => c.name.toLowerCase() === categoryForm.name.toLowerCase())) return alert("Category already exists!");
-      updatedDetails = [...categoryDetails, { name: categoryForm.name, image: categoryForm.image }];
+      const { error } = await supabase.from('categories').insert([{ name: categoryForm.name, image: categoryForm.image }]);
+      if (error) return alert(error.message);
     }
 
-    if (safeStorageSave('ktronic_category_details', updatedDetails)) {
-      safeStorageSave('ktronic_categories', updatedDetails.map(c => c.name));
-      setCategoryDetails(updatedDetails);
-      setCategoryForm({ name: '', image: '' });
-      setEditingCategoryId(null);
-      alert('Category saved successfully!');
-    }
+    setCategoryForm({ name: '', image: '' });
+    setEditingCategoryId(null);
+    fetchAdminData();
+    alert('Category saved!');
   };
 
   const handleEditCategory = (cat) => {
@@ -169,33 +145,36 @@ export default function Admin() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDeleteCategory = (name) => {
-    if(window.confirm(`Delete "${name}"? Products in this category will NOT be deleted, but they will lose their grouping.`)) {
-      const updated = categoryDetails.filter(c => c.name !== name);
-      setCategoryDetails(updated);
-      safeStorageSave('ktronic_category_details', updated);
-      safeStorageSave('ktronic_categories', updated.map(c => c.name));
+  const handleDeleteCategory = async (name) => {
+    if(window.confirm(`Delete "${name}"? Products will NOT be deleted, but will lose grouping.`)) {
+      await supabase.from('categories').delete().eq('name', name);
+      fetchAdminData();
     }
   };
 
-  // --- BLOG MANAGEMENT ---
-  const handleBlogSubmit = (e) => {
+  // --- SUPABASE BLOG MANAGEMENT ---
+  const handleBlogSubmit = async (e) => {
     e.preventDefault();
-    if (!blogForm.image || blogForm.image.trim() === '') return alert("⚠️ Blog Cover Image is compulsory!");
+    if (!blogForm.image) return alert("⚠️ Blog Cover Image is compulsory!");
     
-    let updatedBlogs;
+    const payload = {
+      title: blogForm.title, category: blogForm.category, snippet: blogForm.snippet, image: blogForm.image,
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    };
+
     if (editingBlogId) {
-      updatedBlogs = blogs.map(b => b.id === editingBlogId ? { ...blogForm, id: editingBlogId, date: b.date } : b);
+      delete payload.date; // Preserve original date
+      const { error } = await supabase.from('blogs').update(payload).eq('id', editingBlogId);
+      if (error) return alert(error.message);
     } else {
-      updatedBlogs = [{ ...blogForm, id: Date.now(), date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }, ...blogs];
+      const { error } = await supabase.from('blogs').insert([payload]);
+      if (error) return alert(error.message);
     }
 
-    if (safeStorageSave('ktronic_blogs', updatedBlogs)) {
-      setBlogs(updatedBlogs);
-      setBlogForm({ title: '', category: '', snippet: '', image: '' });
-      setEditingBlogId(null);
-      alert(editingBlogId ? 'Blog updated successfully!' : 'Blog published successfully!');
-    }
+    setBlogForm({ title: '', category: '', snippet: '', image: '' });
+    setEditingBlogId(null);
+    fetchAdminData();
+    alert('Blog published!');
   };
 
   const handleEditBlog = (blog) => {
@@ -204,23 +183,27 @@ export default function Admin() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDeleteBlog = (id) => {
-    if(window.confirm("Are you sure you want to delete this blog?")) {
-      const updated = blogs.filter(b => b.id !== id);
-      setBlogs(updated);
-      safeStorageSave('ktronic_blogs', updated);
+  const handleDeleteBlog = async (id) => {
+    if(window.confirm("Delete this blog?")) {
+      await supabase.from('blogs').delete().eq('id', id);
+      fetchAdminData();
     }
   };
 
-  // --- SITE SETTINGS MANAGEMENT ---
-  const handleSettingsSubmit = (e) => {
+  // --- SUPABASE SITE SETTINGS MANAGEMENT ---
+  const handleSettingsSubmit = async (e) => {
     e.preventDefault();
-    safeStorageSave('ktronic_settings', siteSettings);
-    window.dispatchEvent(new Event('settingsUpdated')); 
-    alert("Global Site Settings updated successfully!");
+    const payload = {
+      id: 1, site_name: siteSettings.siteName, phone: siteSettings.phone, email: siteSettings.email,
+      address: siteSettings.address, facebook: siteSettings.facebook, instagram: siteSettings.instagram,
+      twitter: siteSettings.twitter, pinterest: siteSettings.pinterest, linkedin: siteSettings.linkedin,
+      youtube: siteSettings.youtube, tiktok: siteSettings.tiktok
+    };
+    const { error } = await supabase.from('site_settings').upsert(payload);
+    if(error) return alert(error.message);
+    alert("Global Site Settings updated in Supabase!");
   };
 
-  // --- LOGIN SCREEN RENDER ---
   if (!isAdminLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-nunito p-4">
@@ -231,44 +214,30 @@ export default function Admin() {
           <h1 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">Admin Portal</h1>
           <p className="text-slate-500 font-bold mb-8 text-[15px]">Enter the master password to manage your platform.</p>
           <form onSubmit={handleAdminLogin} className="space-y-4">
-            <input 
-              type="password" 
-              required 
-              placeholder="Master Password" 
-              value={loginPass} 
-              onChange={e => setLoginPass(e.target.value)} 
-              className="w-full border-2 border-slate-100 bg-slate-50/50 p-4 rounded-xl outline-none focus:border-[#2a64f6] focus:bg-white focus:ring-4 focus:ring-[#2a64f6]/10 transition-all font-bold text-center tracking-widest text-slate-800" 
-            />
-            <button type="submit" className="w-full bg-[#2a64f6] text-white font-black py-4 rounded-xl shadow-[0_4px_14px_rgba(42,100,246,0.3)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(42,100,246,0.4)] transition-all text-lg">
-              Unlock Dashboard
-            </button>
+            <input type="password" required placeholder="Master Password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full border-2 border-slate-100 bg-slate-50/50 p-4 rounded-xl outline-none focus:border-[#2a64f6] focus:bg-white focus:ring-4 focus:ring-[#2a64f6]/10 transition-all font-bold text-center tracking-widest text-slate-800" />
+            <button type="submit" className="w-full bg-[#2a64f6] text-white font-black py-4 rounded-xl shadow-[0_4px_14px_rgba(42,100,246,0.3)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(42,100,246,0.4)] transition-all text-lg">Unlock Dashboard</button>
           </form>
-          <p className="text-xs font-bold text-slate-400 mt-6 uppercase tracking-widest">Secure Connection</p>
         </div>
       </div>
     );
   }
 
-  // --- DASHBOARD RENDER ---
   return (
     <div className="max-w-[1400px] mx-auto p-4 sm:p-6 mt-8 font-nunito animate-fade-in-up pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 border-b border-slate-200 pb-6">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Admin Dashboard</h1>
-          <p className="text-slate-500 font-bold mt-1">Manage platform inventory, settings, and content.</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Admin Dashboard (Live Database)</h1>
         </div>
         <div className="flex items-center gap-3 overflow-x-auto pb-2 sm:pb-0">
           <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-5 py-2.5 font-bold rounded-full transition-all shrink-0 ${activeTab === 'products' ? 'bg-[#2a64f6] text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}><Box size={18}/> Products</button>
           <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-2 px-5 py-2.5 font-bold rounded-full transition-all shrink-0 ${activeTab === 'categories' ? 'bg-[#2a64f6] text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}><FolderKanban size={18}/> Categories</button>
           <button onClick={() => setActiveTab('blogs')} className={`flex items-center gap-2 px-5 py-2.5 font-bold rounded-full transition-all shrink-0 ${activeTab === 'blogs' ? 'bg-[#2a64f6] text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}><FileText size={18}/> Blogs</button>
           <button onClick={() => setActiveTab('settings')} className={`flex items-center gap-2 px-5 py-2.5 font-bold rounded-full transition-all shrink-0 ${activeTab === 'settings' ? 'bg-[#2a64f6] text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}><Settings size={18}/> Settings</button>
-          
           <div className="w-px h-8 bg-slate-200 mx-1 shrink-0"></div>
           <button onClick={handleAdminLogout} className="flex items-center gap-2 px-5 py-2.5 font-bold rounded-full transition-all shrink-0 bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white"><LogOut size={18}/> Lock</button>
         </div>
       </div>
 
-      {/* PRODUCTS TAB */}
       {activeTab === 'products' && (
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm h-max sticky top-24">
@@ -286,9 +255,7 @@ export default function Admin() {
                 </select>
               </div>
               <input type="url" value={productForm.productUrl} onChange={e => setProductForm({...productForm, productUrl: e.target.value})} placeholder="External Link (For Buy Now Button)" className="w-full border border-slate-200 bg-slate-50 p-3.5 rounded-xl outline-none focus:border-[#45c4f0] font-semibold" />
-              
               <textarea required placeholder="Detailed Product Description..." rows="4" value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3.5 rounded-xl outline-none focus:border-[#45c4f0] font-semibold custom-scrollbar"></textarea>
-              
               <div className="border border-slate-200 p-4 rounded-xl bg-slate-50">
                 <label className="block text-sm font-black text-slate-800 mb-3">Product Image <span className="text-rose-500">*</span></label>
                 <div className="space-y-3">
@@ -310,7 +277,7 @@ export default function Admin() {
           </div>
           <div className="flex-[1.5] bg-[#f8fafc] p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col h-[850px]">
             <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
-              <h2 className="text-xl font-black">Inventory ({products.filter(p => productFilter === 'All' || p.category === productFilter).length})</h2>
+              <h2 className="text-xl font-black">Live Inventory ({products.filter(p => productFilter === 'All' || p.category === productFilter).length})</h2>
               <select value={productFilter} onChange={(e) => setProductFilter(e.target.value)} className="px-4 py-2 border rounded-full font-bold outline-none cursor-pointer bg-white shadow-sm">
                 <option value="All">All Categories</option>
                 {categoryDetails.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
@@ -338,7 +305,6 @@ export default function Admin() {
         </div>
       )}
 
-      {/* CATEGORIES TAB */}
       {activeTab === 'categories' && (
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1 bg-white p-6 sm:p-8 rounded-3xl border shadow-sm h-max sticky top-24">
@@ -368,7 +334,7 @@ export default function Admin() {
             </form>
           </div>
           <div className="flex-[1.5] bg-[#f8fafc] p-4 sm:p-6 rounded-3xl border shadow-sm flex flex-col h-[850px]">
-            <h2 className="text-xl font-black mb-6 border-b pb-4">Managed Categories ({categoryDetails.length})</h2>
+            <h2 className="text-xl font-black mb-6 border-b pb-4">Live Categories ({categoryDetails.length})</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 overflow-y-auto custom-scrollbar pr-2 pb-4">
               {categoryDetails.map(cat => (
                 <div key={cat.name} className="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col items-center shadow-sm hover:shadow-md transition-shadow group relative">
@@ -387,7 +353,6 @@ export default function Admin() {
         </div>
       )}
 
-      {/* BLOGS TAB */}
       {activeTab === 'blogs' && (
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1 bg-white p-6 sm:p-8 rounded-3xl border shadow-sm h-max sticky top-24">
@@ -397,7 +362,7 @@ export default function Admin() {
             </div>
             <form onSubmit={handleBlogSubmit} className="space-y-5">
               <input type="text" required placeholder="Blog Title" value={blogForm.title} onChange={e => setBlogForm({...blogForm, title: e.target.value})} className="w-full border bg-slate-50 p-3.5 rounded-xl font-semibold outline-none focus:border-[#45c4f0]" />
-              <input type="text" required placeholder="Category Tag (e.g. Tutorial)" value={blogForm.category} onChange={e => setBlogForm({...blogForm, category: e.target.value})} className="w-full border bg-slate-50 p-3.5 rounded-xl font-semibold outline-none focus:border-[#45c4f0]" />
+              <input type="text" required placeholder="Category Tag" value={blogForm.category} onChange={e => setBlogForm({...blogForm, category: e.target.value})} className="w-full border bg-slate-50 p-3.5 rounded-xl font-semibold outline-none focus:border-[#45c4f0]" />
               <textarea required rows="6" placeholder="Full Blog Content..." value={blogForm.snippet} onChange={e => setBlogForm({...blogForm, snippet: e.target.value})} className="w-full border bg-slate-50 p-3.5 rounded-xl font-semibold outline-none focus:border-[#45c4f0] custom-scrollbar"></textarea>
               <div className="border p-4 rounded-xl bg-slate-50">
                 <label className="block text-sm font-black mb-3">Cover Image <span className="text-rose-500">*</span></label>
@@ -419,7 +384,7 @@ export default function Admin() {
             </form>
           </div>
           <div className="flex-[1.5] bg-[#f8fafc] p-6 rounded-3xl border shadow-sm h-[850px] overflow-auto custom-scrollbar flex flex-col">
-            <h2 className="text-xl font-black mb-6 border-b pb-4">Published Blogs ({blogs.length})</h2>
+            <h2 className="text-xl font-black mb-6 border-b pb-4">Live Blogs ({blogs.length})</h2>
             <div className="space-y-4 pr-2 flex-1 overflow-y-auto custom-scrollbar pb-4">
               {blogs.map(b => (
                 <div key={b.id} className="bg-white p-4 border rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-shadow group">
@@ -441,7 +406,6 @@ export default function Admin() {
         </div>
       )}
 
-      {/* SETTINGS TAB */}
       {activeTab === 'settings' && (
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm">
@@ -453,7 +417,6 @@ export default function Admin() {
                  <label className="block text-sm font-black text-slate-800 mb-2">Platform Name</label>
                  <input required type="text" placeholder="e.g. Ktronics" value={siteSettings.siteName} onChange={e => setSiteSettings({...siteSettings, siteName: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3.5 rounded-xl outline-none focus:border-[#45c4f0] font-bold text-slate-900" />
               </div>
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div>
                     <label className="block text-sm font-black text-slate-800 mb-2">Support Phone Number</label>
@@ -464,7 +427,6 @@ export default function Admin() {
                     <input required type="email" placeholder="support@ktronics.tech" value={siteSettings.email} onChange={e => setSiteSettings({...siteSettings, email: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3.5 rounded-xl outline-none focus:border-[#45c4f0] font-bold text-slate-900" />
                  </div>
               </div>
-
               <div>
                  <label className="block text-sm font-black text-slate-800 mb-2">Physical Address</label>
                  <input required type="text" placeholder="Tech Hub, Building 4..." value={siteSettings.address} onChange={e => setSiteSettings({...siteSettings, address: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3.5 rounded-xl outline-none focus:border-[#45c4f0] font-bold text-slate-900" />
@@ -510,23 +472,14 @@ export default function Admin() {
             </form>
           </div>
           
-          {/* Information Panel */}
           <div className="flex-1 bg-gradient-to-br from-slate-800 to-slate-900 p-8 rounded-3xl border border-slate-700 shadow-lg text-white flex flex-col justify-center">
              <div className="h-16 w-16 bg-white/10 rounded-2xl flex items-center justify-center mb-6 border border-white/20">
                 <Settings size={32} className="text-[#45c4f0]" />
              </div>
-             <h3 className="text-2xl font-black mb-3">Live Platform Synchronization</h3>
+             <h3 className="text-2xl font-black mb-3">Live Supabase Synchronization</h3>
              <p className="text-slate-300 font-bold leading-relaxed mb-6">
-                Any changes made here will immediately update across the entire customer-facing platform. The Header, Footer, and Contact panels will instantly pull this new data, keeping your branding and contact information perfectly consistent.
+                Any changes made here will immediately update across the entire customer-facing platform via your live database.
              </p>
-             <div className="bg-white/10 p-5 rounded-2xl border border-white/10">
-                <p className="text-sm font-black tracking-widest uppercase text-[#45c4f0] mb-2">Current Active Status</p>
-                <div className="space-y-1.5">
-                   <p className="text-[13px] font-bold"><span className="text-slate-400">Name:</span> {siteSettings.siteName}</p>
-                   <p className="text-[13px] font-bold"><span className="text-slate-400">Phone:</span> {siteSettings.phone}</p>
-                   <p className="text-[13px] font-bold"><span className="text-slate-400">Email:</span> {siteSettings.email}</p>
-                </div>
-             </div>
           </div>
         </div>
       )}
