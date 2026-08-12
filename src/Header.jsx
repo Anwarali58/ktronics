@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Heart, ShoppingCart, User, HeadphonesIcon, Menu, ChevronRight, X, Mail, Trash2, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { Search, Heart, ShoppingCart, User, HeadphonesIcon, Menu, ChevronRight, X, Mail, Trash2, Lock, Eye, EyeOff, CheckCircle2, ArrowRight, LogOut } from 'lucide-react';
+import { supabase } from './supabaseClient'; 
 
 export default function Header() {
   const navigate = useNavigate();
@@ -13,17 +14,23 @@ export default function Header() {
   // Dynamic Site Settings
   const [siteSettings, setSiteSettings] = useState({
     siteName: 'Ktronics',
+    siteLogo: '',
     phone: '+92 311 1486790',
     email: 'support@ktronics.tech'
   });
 
+  // Authentication States
   const [currentUser, setCurrentUser] = useState(localStorage.getItem('currentUser'));
+  const [currentUserName, setCurrentUserName] = useState('');
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(sessionStorage.getItem('ktronic_admin_auth') === 'true');
+
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSignUpMode, setIsSignUpMode] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
   const [authSuccess, setAuthSuccess] = useState('');
 
+  // Cart & Wishlist States
   const [cartItems, setCartItems] = useState([]);
   const [wishlistItems, setWishlistItems] = useState([]);
   const [cartTotal, setCartTotal] = useState("0.00");
@@ -31,12 +38,20 @@ export default function Header() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
 
-  const loadData = () => {
-    const storedSettings = JSON.parse(localStorage.getItem('ktronic_settings'));
-    if (storedSettings) setSiteSettings(storedSettings);
+  // Fetch Live Data from Supabase
+  const fetchLiveData = async () => {
+    const { data: settingsData } = await supabase.from('site_settings').select('*').eq('id', 1).single();
+    if (settingsData) {
+      setSiteSettings({
+        siteName: settingsData.site_name || 'Ktronics',
+        siteLogo: settingsData.site_logo || '',
+        phone: settingsData.phone || '+92 311 1486790',
+        email: settingsData.email || 'support@ktronics.tech'
+      });
+    }
 
-    const dbCategories = JSON.parse(localStorage.getItem('ktronic_categories')) || [];
-    setCategories(dbCategories);
+    const { data: catData } = await supabase.from('categories').select('*');
+    if (catData) setCategories(catData.map(c => c.name));
 
     const cart = JSON.parse(localStorage.getItem('ktronic_cart')) || [];
     const wishlist = JSON.parse(localStorage.getItem('ktronic_wishlist')) || [];
@@ -48,26 +63,45 @@ export default function Header() {
       return sum + (isNaN(numericPrice) ? 0 : numericPrice);
     }, 0);
     setCartTotal(total.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    
+    // Check Auth details
+    const email = localStorage.getItem('currentUser');
+    if (email) {
+      const usersDB = JSON.parse(localStorage.getItem('ktronic_users')) || [];
+      const user = usersDB.find(u => u.email === email);
+      setCurrentUserName(user ? user.name : email.split('@')[0]);
+    }
   };
 
   useEffect(() => {
-    loadData();
-    window.addEventListener('storage', loadData); 
-    window.addEventListener('cartUpdated', loadData);
-    window.addEventListener('wishlistUpdated', loadData);
-    window.addEventListener('settingsUpdated', loadData);
+    fetchLiveData();
+    window.addEventListener('storage', fetchLiveData); 
+    window.addEventListener('cartUpdated', fetchLiveData);
+    window.addEventListener('wishlistUpdated', fetchLiveData);
+    window.addEventListener('settingsUpdated', fetchLiveData);
     
     const handleOpenLogin = () => setIsLoginModalOpen(true);
     window.addEventListener('openLogin', handleOpenLogin);
 
+    // Sync Auth States automatically (fixes the Admin logout not updating the button bug)
+    const authSyncInterval = setInterval(() => {
+      setIsAdminLoggedIn(sessionStorage.getItem('ktronic_admin_auth') === 'true');
+      const email = localStorage.getItem('currentUser');
+      if (email !== currentUser) {
+        setCurrentUser(email);
+        if (!email) setCurrentUserName('');
+      }
+    }, 500);
+
     return () => {
-      window.removeEventListener('storage', loadData);
-      window.removeEventListener('cartUpdated', loadData);
-      window.removeEventListener('wishlistUpdated', loadData);
-      window.removeEventListener('settingsUpdated', loadData);
+      window.removeEventListener('storage', fetchLiveData);
+      window.removeEventListener('cartUpdated', fetchLiveData);
+      window.removeEventListener('wishlistUpdated', fetchLiveData);
+      window.removeEventListener('settingsUpdated', fetchLiveData);
       window.removeEventListener('openLogin', handleOpenLogin);
+      clearInterval(authSyncInterval);
     };
-  }, []);
+  }, [currentUser]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -80,50 +114,35 @@ export default function Header() {
     e.preventDefault();
     setAuthError('');
     setAuthSuccess('');
-    
     const emailInput = e.target.elements.email.value;
     const passwordInput = e.target.elements.password.value;
     const usersDB = JSON.parse(localStorage.getItem('ktronic_users')) || [];
 
     if (isSignUpMode) {
       const nameInput = e.target.elements.fullName.value;
-      if (usersDB.find(u => u.email === emailInput)) {
-        setAuthError('An account with this email already exists.');
-        return;
-      }
-      if (passwordInput.length < 6) {
-        setAuthError('Password must be at least 6 characters long.');
-        return;
-      }
+      if (usersDB.find(u => u.email === emailInput)) return setAuthError('Account already exists.');
+      if (passwordInput.length < 6) return setAuthError('Password min 6 chars.');
       usersDB.push({ email: emailInput, password: passwordInput, name: nameInput });
       localStorage.setItem('ktronic_users', JSON.stringify(usersDB));
-      
       e.target.reset();
       setIsSignUpMode(false);
       setAuthSuccess('Account created successfully! Please log in below.');
     } else {
       const user = usersDB.find(u => u.email === emailInput);
-      if (!user) {
-        setAuthError('No account found with this email. Please create an account first.');
-        return;
-      }
-      if (user.password !== passwordInput) {
-        setAuthError('Incorrect password. Please try again.');
-        return;
-      }
+      if (!user) return setAuthError('No account found. Create an account first.');
+      if (user.password !== passwordInput) return setAuthError('Incorrect password.');
+      
       localStorage.setItem('currentUser', emailInput);
       setCurrentUser(emailInput);
+      setCurrentUserName(user.name);
       setIsLoginModalOpen(false);
     }
-  };
-
-  const handleSocialLogin = (provider) => {
-    setAuthError(`Live ${provider} authentication requires backend OAuth configuration. Please use the Email/Password option to log in securely.`);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('currentUser');
     setCurrentUser(null);
+    setCurrentUserName('');
     setIsMobileMenuOpen(false);
   };
 
@@ -132,7 +151,7 @@ export default function Header() {
     const updated = [...cartItems];
     updated.splice(index, 1);
     localStorage.setItem('ktronic_cart', JSON.stringify(updated));
-    loadData();
+    fetchLiveData();
   };
 
   const removeFromWishlist = (e, index) => {
@@ -140,7 +159,7 @@ export default function Header() {
     const updated = [...wishlistItems];
     updated.splice(index, 1);
     localStorage.setItem('ktronic_wishlist', JSON.stringify(updated));
-    loadData();
+    fetchLiveData();
   };
 
   const handleProceedToItemDetail = (item) => {
@@ -149,7 +168,27 @@ export default function Header() {
     window.dispatchEvent(new CustomEvent('openProductDetail', { detail: item }));
   };
 
-  const subCategories = ['View All', 'New Arrivals', 'Best Sellers'];
+  // --- DYNAMIC MULTI-DROPDOWN LOGIC ---
+  const displayCategories = categories.filter(c => c !== 'Hero Banners');
+  
+  // 1. Map out the Projects Dropdown Categories
+  let projectSubCategories = displayCategories.filter(c => 
+    ['iot', 'arduino', 'drone', 'robotics', 'projects'].some(keyword => c.toLowerCase().includes(keyword))
+  );
+
+  // Remaining categories after Projects takes its pick
+  let remainingForExplore = displayCategories.filter(c => !projectSubCategories.includes(c));
+
+  // Fill Projects dropdown to exactly 4 if it's lacking
+  if (projectSubCategories.length < 4) {
+    const missingCount = 4 - projectSubCategories.length;
+    projectSubCategories = [...projectSubCategories, ...remainingForExplore.slice(0, missingCount)];
+    remainingForExplore = remainingForExplore.slice(missingCount);
+  }
+  const dynamicProjectCategories = projectSubCategories.slice(0, 4); 
+
+  // 2. Map out the Explore Dropdown Categories from whatever is left
+  const dynamicExploreCategories = remainingForExplore.slice(0, 4);
 
   return (
     <>
@@ -164,7 +203,6 @@ export default function Header() {
 
       {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[90] transition-opacity" onClick={() => setIsSidebarOpen(false)} />}
       
-      {/* AUTH MODAL */}
       {isLoginModalOpen && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[110] flex items-center justify-center p-4 font-nunito">
           <div className="bg-white/90 backdrop-blur-xl border border-white/50 rounded-[32px] shadow-2xl w-full max-w-[900px] relative animate-fade-in-up flex overflow-hidden">
@@ -172,9 +210,13 @@ export default function Header() {
                <div className="absolute -top-24 -left-24 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
                <div className="absolute bottom-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-3xl translate-x-1/3 translate-y-1/3"></div>
                <div className="relative z-10">
-                 <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center mb-8 shadow-sm">
-                   <span className="text-[#2a64f6] font-black text-3xl">{siteSettings.siteName.charAt(0)}</span>
-                 </div>
+                 {siteSettings.siteLogo ? (
+                   <img src={siteSettings.siteLogo} alt={siteSettings.siteName} className="h-14 w-auto max-w-[200px] object-contain mb-8 shadow-sm bg-white p-2 rounded-2xl shrink-0" />
+                 ) : (
+                   <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center mb-8 shadow-sm">
+                     <span className="text-[#2a64f6] font-black text-3xl">{siteSettings.siteName.charAt(0)}</span>
+                   </div>
+                 )}
                  <h2 className="text-4xl font-black text-white leading-tight mb-4 tracking-tight">
                    {isSignUpMode ? 'Join the Innovation.' : 'Welcome Back.'}
                  </h2>
@@ -187,24 +229,19 @@ export default function Header() {
             <div className="w-full md:w-1/2 p-8 md:p-12 relative bg-white flex flex-col justify-center">
               <button onClick={() => { setIsLoginModalOpen(false); setAuthError(''); setAuthSuccess(''); }} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 bg-slate-50 hover:bg-rose-50 p-2.5 rounded-full transition-colors"><X size={20}/></button>
               <div className="md:hidden flex items-center gap-3 mb-8">
-                 <div className="h-10 w-10 bg-[#45c4f0] rounded-xl flex items-center justify-center shadow-sm"><span className="text-white font-black text-2xl">{siteSettings.siteName.charAt(0)}</span></div>
-                 <span className="text-2xl font-black text-[#45c4f0]">{siteSettings.siteName}</span>
+                 {siteSettings.siteLogo ? (
+                   <img src={siteSettings.siteLogo} alt={siteSettings.siteName} className="h-10 w-auto max-w-[150px] object-contain shrink-0" />
+                 ) : (
+                   <div className="h-10 w-10 bg-[#45c4f0] rounded-xl flex items-center justify-center shadow-sm shrink-0"><span className="text-white font-black text-2xl">{siteSettings.siteName.charAt(0)}</span></div>
+                 )}
+                 <span className="text-2xl font-black text-[#45c4f0] truncate">{siteSettings.siteName}</span>
               </div>
               <h3 className="text-[28px] font-black text-slate-900 mb-1 tracking-tight">{isSignUpMode ? 'Create Account' : 'Sign In'}</h3>
               <p className="text-slate-500 font-bold mb-6 text-[15px]">{isSignUpMode ? 'Please fill your details below.' : 'Enter your credentials to continue.'}</p>
 
-              <div className="flex gap-3 mb-6">
-                 <button onClick={() => handleSocialLogin('Google')} className="flex-1 border-2 border-slate-100 py-3 rounded-xl flex items-center justify-center gap-2 text-[14px] font-black text-slate-700 hover:bg-slate-50 hover:border-[#4285F4] transition-all">
-                    <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                 </button>
-                 <button onClick={() => handleSocialLogin('GitHub')} className="flex-1 border-2 border-slate-100 py-3 rounded-xl flex items-center justify-center gap-2 text-[14px] font-black text-slate-700 hover:bg-slate-50 hover:border-slate-800 transition-all">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd"/></svg>
-                 </button>
-              </div>
-
               <div className="flex items-center gap-3 mb-6">
                 <div className="h-px bg-slate-200 flex-1"></div>
-                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Or continue with email</span>
+                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Continue with email</span>
                 <div className="h-px bg-slate-200 flex-1"></div>
               </div>
 
@@ -247,7 +284,6 @@ export default function Header() {
         </div>
       )}
 
-      {/* Cart Drawer */}
       {isCartOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end font-nunito">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsCartOpen(false)} />
@@ -283,7 +319,6 @@ export default function Header() {
         </div>
       )}
 
-      {/* Wishlist Drawer */}
       {isWishlistOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end font-nunito">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsWishlistOpen(false)} />
@@ -312,45 +347,47 @@ export default function Header() {
         </div>
       )}
 
-      {/* --- HEADER CONTENT --- */}
       <div className={`fixed top-32 left-0 z-40 bg-[#45c4f0] text-white p-3 rounded-r-full cursor-pointer shadow-lg transition-transform duration-300 ${isSidebarOpen ? '-translate-x-full' : 'translate-x-0'}`} onMouseEnter={() => setIsSidebarOpen(true)} onClick={() => setIsSidebarOpen(true)}>
         <Menu size={24} />
       </div>
 
-      <div className={`fixed top-0 left-0 h-full w-[85%] sm:w-[300px] bg-white shadow-[0_0_50px_rgba(0,0,0,0.2)] z-[100] transform transition-transform duration-300 ease-in-out font-nunito ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`} onMouseLeave={() => { setIsSidebarOpen(false); setActiveHoverCategory(null); }}>
-        <div className="bg-[#45c4f0] text-white px-6 py-5 flex items-center justify-between shadow-sm">
+      <div className={`fixed top-0 left-0 h-full w-[85%] sm:w-[300px] bg-white shadow-[0_0_50px_rgba(0,0,0,0.2)] z-[100] transform transition-transform duration-300 ease-in-out font-nunito flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`} onMouseLeave={() => { setIsSidebarOpen(false); setActiveHoverCategory(null); }}>
+        <div className="bg-[#45c4f0] text-white px-6 py-5 flex items-center justify-between shadow-sm shrink-0">
           <div className="flex items-center gap-3 font-black text-xl"><Menu size={24} strokeWidth={2.5} /> Categories</div>
           <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden bg-white/20 p-1.5 rounded-lg"><X size={20}/></button>
         </div>
-        <ul className="py-2 h-[calc(100vh-80px)] overflow-y-auto custom-scrollbar">
-          {categories.length === 0 ? (
-            <li className="px-6 py-4 text-slate-400 font-bold text-sm">No categories available.</li>
+        <ul className="py-2 flex-1 overflow-y-auto custom-scrollbar">
+          {displayCategories.length === 0 ? (
+            <li className="px-6 py-4 text-slate-400 font-bold text-sm">No live categories.</li>
           ) : (
-            categories.map((cat) => (
-              <li key={cat} className="relative group/item" onMouseEnter={() => setActiveHoverCategory(cat)} onMouseLeave={() => setActiveHoverCategory(null)}>
-                <Link to={`/?category=${encodeURIComponent(cat)}`} onClick={() => setIsSidebarOpen(false)} className={`w-full flex items-center justify-between px-6 py-3 text-[15px] font-bold transition-colors ${activeHoverCategory === cat ? 'text-[#45c4f0]' : 'text-slate-700'}`}>
-                  {cat} <ChevronRight size={16} className={`transition-opacity hidden sm:block ${activeHoverCategory === cat ? 'opacity-100 text-[#45c4f0]' : 'opacity-0'}`} />
+            displayCategories.map((cat) => (
+              <li key={cat}>
+                <Link to={`/?category=${encodeURIComponent(cat)}`} onClick={() => setIsSidebarOpen(false)} className="w-full flex items-center justify-between px-6 py-3 text-[15px] font-bold transition-colors text-slate-700 hover:text-[#45c4f0] hover:bg-slate-50">
+                  {cat} <ChevronRight size={16} className="opacity-0 hover:opacity-100 transition-opacity" />
                 </Link>
-                {activeHoverCategory === cat && (
-                  <div className="hidden sm:block absolute top-0 left-[295px] w-[220px] bg-white shadow-2xl border border-slate-100 rounded-xl py-2 z-[100]">
-                    {subCategories.map(sub => <Link key={sub} to={`/?search=${encodeURIComponent(sub)}`} className="block px-6 py-2.5 text-[15px] font-bold text-slate-600 hover:text-[#45c4f0] hover:bg-slate-50 transition-colors">{sub}</Link>)}
-                  </div>
-                )}
               </li>
             ))
           )}
         </ul>
       </div>
 
+      {/* --- TOP HEADER BAR --- */}
       <header className="w-full bg-white shadow-sm flex flex-col font-nunito relative z-30">
-        <div className="max-w-[1500px] w-full mx-auto px-4 sm:px-6 py-4 flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-6">
-          <div className="flex items-center justify-between w-full lg:w-auto">
-            <Link to="/" className="flex items-center gap-2 shrink-0">
-              <div className="h-10 w-10 bg-[#45c4f0] rounded flex items-center justify-center"><span className="text-white font-black text-2xl">{siteSettings.siteName.charAt(0)}</span></div>
-              <div className="flex flex-col">
-                <span className="text-2xl font-black text-[#45c4f0] leading-none tracking-tight">{siteSettings.siteName}</span>
-                <span className="text-[10px] text-slate-400 font-bold tracking-widest">EXPLORE • LEARN • BUILD</span>
-              </div>
+        <div className="max-w-[1500px] w-full mx-auto px-4 sm:px-6 py-4 flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-12">
+          
+          <div className="flex items-center justify-between w-full lg:w-auto shrink-0">
+            <Link to="/" className="flex items-center gap-3 shrink-0">
+              {siteSettings.siteLogo ? (
+                <img src={siteSettings.siteLogo} alt={siteSettings.siteName} className="max-h-10 sm:max-h-14 w-auto max-w-[180px] sm:max-w-[250px] object-contain shrink-0" />
+              ) : (
+                <>
+                  <div className="h-10 w-10 bg-[#45c4f0] rounded flex items-center justify-center shrink-0"><span className="text-white font-black text-2xl">{siteSettings.siteName.charAt(0)}</span></div>
+                  <div className="flex flex-col">
+                    <span className="text-2xl font-black text-[#45c4f0] leading-none tracking-tight">{siteSettings.siteName}</span>
+                    <span className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Explore • Learn • Build</span>
+                  </div>
+                </>
+              )}
             </Link>
             <div className="flex items-center gap-3 lg:hidden">
               <button onClick={() => setIsCartOpen(true)} className="relative p-2 text-slate-600">
@@ -363,23 +400,39 @@ export default function Header() {
             </div>
           </div>
 
-          <form onSubmit={handleSearch} className="flex-1 w-full max-w-2xl relative order-3 lg:order-2">
-            <input type="text" placeholder="Search for products" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="w-full border-2 border-slate-100 bg-white rounded-full py-2.5 pl-6 pr-14 outline-none focus:border-[#45c4f0] transition-all text-[15px] font-bold text-slate-700" />
-            <button type="submit" className="absolute right-1.5 top-1.5 bg-[#45c4f0] hover:bg-[#3ab0d9] text-white p-2 rounded-full transition-colors"><Search size={18} /></button>
+          <form onSubmit={handleSearch} className="flex-1 w-full relative order-3 lg:order-2 lg:mx-4">
+            <input type="text" placeholder="Search for products, categories, or kits..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="w-full border-2 border-slate-100 bg-white rounded-full py-3.5 pl-6 pr-14 outline-none focus:border-[#45c4f0] transition-all text-[15px] font-bold text-slate-700 shadow-sm" />
+            <button type="submit" className="absolute right-2 top-2 bg-[#45c4f0] hover:bg-[#3ab0d9] text-white p-2.5 rounded-full transition-colors"><Search size={20} /></button>
           </form>
 
-          <div className="hidden lg:flex items-center gap-8 shrink-0 order-2 lg:order-3">
+          <div className="hidden lg:flex items-center gap-6 shrink-0 order-2 lg:order-3">
             <a href={`tel:${siteSettings.phone.replace(/[^0-9+]/g, '')}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <HeadphonesIcon size={28} className="text-slate-700 stroke-1" />
-              <div className="flex flex-col"><span className="text-[13px] font-bold text-slate-700">Customer Support</span><span className="text-[15px] font-black text-[#2a64f6]">{siteSettings.phone}</span></div>
+              <div className="bg-[#eef6ff] p-2.5 rounded-full"><HeadphonesIcon size={22} className="text-[#2a64f6]" /></div>
+              <div className="flex flex-col">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">Call Us</span>
+                <span className="text-[15px] font-black text-slate-800 leading-none mt-1.5">{siteSettings.phone}</span>
+              </div>
             </a>
-            <a href={`mailto:${siteSettings.email}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <Mail size={28} className="text-slate-700 stroke-1" />
-              <div className="flex flex-col"><span className="text-[13px] font-bold text-slate-700">Email Us</span><span className="text-[15px] font-black text-[#2a64f6]">{siteSettings.email}</span></div>
+            
+            <a href={`mailto:${siteSettings.email}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <div className="bg-[#eef6ff] p-2.5 rounded-full"><Mail size={22} className="text-[#2a64f6]" /></div>
+              <div className="flex flex-col">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">Email Us</span>
+                <span className="text-[15px] font-black text-slate-800 leading-none mt-1.5">{siteSettings.email}</span>
+              </div>
             </a>
+
+            <div className="flex items-center gap-3 bg-gradient-to-r from-[#2a64f6]/10 to-[#45c4f0]/10 px-4 py-2.5 rounded-2xl border border-[#2a64f6]/20 shadow-sm ml-2">
+               <span className="text-[#2a64f6] font-black text-2xl italic tracking-tighter drop-shadow-sm">24/7</span>
+               <div className="flex flex-col">
+                 <span className="text-[10px] font-bold text-[#2a64f6] uppercase tracking-widest leading-tight">Fast</span>
+                 <span className="text-[13px] font-black text-slate-800 leading-tight">Dispatch</span>
+               </div>
+            </div>
           </div>
         </div>
 
+        {/* BOTTOM NAVIGATION BAR */}
         <div className="hidden lg:block bg-white border-t border-[#e2e8f0]">
           <div className="max-w-[1300px] mx-auto px-6 lg:px-12 flex items-center justify-between h-[64px] overflow-visible no-scrollbar">
             <div className="h-full flex items-center cursor-pointer group mr-6 shrink-0" onClick={() => setIsSidebarOpen(true)}>
@@ -391,17 +444,41 @@ export default function Header() {
 
             <nav className="flex items-center justify-between xl:justify-center xl:gap-10 w-full flex-1 px-4">
               <Link to="/" className="text-[15px] font-bold text-slate-700 hover:text-[#45c4f0] transition-colors whitespace-nowrap">Home</Link>
-              <Link to="/?category=Microcontrollers" className="text-[15px] font-bold text-slate-700 hover:text-[#45c4f0] transition-colors whitespace-nowrap">Microcontrollers</Link>
-              <div className="relative group h-full flex items-center py-5 -my-5">
-                <Link to="/?category=Projects" className="text-[15px] font-bold text-slate-700 hover:text-[#45c4f0] transition-colors whitespace-nowrap flex items-center gap-1">
-                  Projects <ChevronRight size={14} className="rotate-90 group-hover:-rotate-90 transition-transform" />
-                </Link>
-                <div className="absolute top-[100%] left-1/2 -translate-x-1/2 mt-0 w-56 bg-white shadow-xl border border-slate-100 rounded-xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                  <Link to="/?search=Arduino" className="block px-6 py-2.5 text-[14px] font-bold text-slate-600 hover:text-[#45c4f0] hover:bg-slate-50 transition-colors">Arduino Projects</Link>
-                  <Link to="/?search=IoT" className="block px-6 py-2.5 text-[14px] font-bold text-slate-600 hover:text-[#45c4f0] hover:bg-slate-50 transition-colors">IoT Automations</Link>
-                  <Link to="/?search=Robotics" className="block px-6 py-2.5 text-[14px] font-bold text-slate-600 hover:text-[#45c4f0] hover:bg-slate-50 transition-colors">Robotics Builds</Link>
+              
+              {dynamicExploreCategories.length > 0 ? (
+                <div className="relative group h-full flex items-center py-5 -my-5">
+                  <Link to="/?category=Explore" className="text-[15px] font-bold text-slate-700 hover:text-[#45c4f0] transition-colors whitespace-nowrap flex items-center gap-1">
+                    Explore <ChevronRight size={14} className="rotate-90 group-hover:-rotate-90 transition-transform duration-300" />
+                  </Link>
+                  <div className="absolute top-[100%] left-1/2 -translate-x-1/2 mt-3 w-64 bg-white/95 backdrop-blur-xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border border-slate-100 rounded-2xl p-2.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:mt-0 transition-all duration-300 z-50 flex flex-col gap-1">
+                    {dynamicExploreCategories.map(cat => (
+                      <Link key={cat} to={`/?category=${encodeURIComponent(cat)}`} className="px-4 py-3 text-[14px] font-bold text-slate-600 hover:text-[#2a64f6] hover:bg-[#eef6ff] rounded-xl transition-colors flex items-center justify-between group/item">
+                        {cat}
+                        <ArrowRight size={14} className="opacity-0 -translate-x-2 group-hover/item:opacity-100 group-hover/item:translate-x-0 transition-all duration-300" />
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <Link to="/?category=Explore" className="text-[15px] font-bold text-slate-700 hover:text-[#45c4f0] transition-colors whitespace-nowrap">Explore</Link>
+              )}
+
+              {dynamicProjectCategories.length > 0 && (
+                <div className="relative group h-full flex items-center py-5 -my-5">
+                  <Link to="/?category=Projects" className="text-[15px] font-bold text-slate-700 hover:text-[#45c4f0] transition-colors whitespace-nowrap flex items-center gap-1">
+                    Projects <ChevronRight size={14} className="rotate-90 group-hover:-rotate-90 transition-transform duration-300" />
+                  </Link>
+                  <div className="absolute top-[100%] left-1/2 -translate-x-1/2 mt-3 w-64 bg-white/95 backdrop-blur-xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border border-slate-100 rounded-2xl p-2.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:mt-0 transition-all duration-300 z-50 flex flex-col gap-1">
+                    {dynamicProjectCategories.map(cat => (
+                      <Link key={cat} to={`/?category=${encodeURIComponent(cat)}`} className="px-4 py-3 text-[14px] font-bold text-slate-600 hover:text-[#2a64f6] hover:bg-[#eef6ff] rounded-xl transition-colors flex items-center justify-between group/item">
+                        {cat}
+                        <ArrowRight size={14} className="opacity-0 -translate-x-2 group-hover/item:opacity-100 group-hover/item:translate-x-0 transition-all duration-300" />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <Link to="/?view=new" className="text-[15px] font-bold text-slate-700 hover:text-[#45c4f0] transition-colors whitespace-nowrap flex items-center gap-1.5">
                 Newly Added <span className="bg-rose-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm animate-pulse">NEW</span>
               </Link>
@@ -410,10 +487,27 @@ export default function Header() {
             </nav>
 
             <div className="flex items-center gap-4 shrink-0 ml-4 pl-6 border-l border-slate-200">
-              {currentUser ? (
-                <button onClick={handleLogout} className="h-10 px-4 bg-white rounded-full border border-slate-200 flex items-center gap-2 text-slate-600 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-colors shadow-sm">
-                  <User size={16}/> <span className="font-bold text-sm">Log Out</span>
-                </button>
+              
+              {/* Dynamic User Authentication State UI */}
+              {isAdminLoggedIn ? (
+                <Link to="/admin" className="h-10 px-4 bg-slate-900 rounded-full border border-slate-700 flex items-center gap-2 text-white hover:bg-slate-800 transition-colors shadow-sm">
+                  <Lock size={14} className="text-[#45c4f0]" /> <span className="font-bold text-sm">Admin</span>
+                </Link>
+              ) : currentUser ? (
+                <div className="relative group/user h-full flex items-center py-2 -my-2 cursor-pointer">
+                  <div className="h-10 w-10 bg-gradient-to-br from-[#2a64f6] to-[#45c4f0] rounded-full flex items-center justify-center text-white font-black shadow-sm border-2 border-white ring-2 ring-slate-100 hover:ring-[#45c4f0]/50 transition-all">
+                    {currentUserName ? currentUserName.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  <div className="absolute top-[100%] right-0 mt-0 w-48 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border border-slate-100 rounded-2xl py-2 opacity-0 invisible group-hover/user:opacity-100 group-hover/user:visible transition-all duration-300 z-50 flex flex-col">
+                    <div className="px-4 py-3 border-b border-slate-50 mb-1">
+                       <p className="text-[13px] font-black text-slate-800 truncate">{currentUserName}</p>
+                       <p className="text-[11px] font-bold text-slate-400 truncate">{currentUser}</p>
+                    </div>
+                    <button onClick={handleLogout} className="px-4 py-2.5 text-[13px] font-bold text-rose-500 hover:bg-rose-50 flex items-center gap-2 transition-colors w-full text-left">
+                      <LogOut size={16} /> Log Out
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <button onClick={() => {setIsSignUpMode(false); setIsLoginModalOpen(true);}} className="h-10 px-4 bg-white rounded-full border border-slate-200 flex items-center gap-2 text-slate-600 hover:text-[#45c4f0] hover:border-[#45c4f0] transition-colors shadow-sm">
                   <User size={16}/> <span className="font-bold text-sm">Log In</span>
@@ -441,16 +535,30 @@ export default function Header() {
           <div className="lg:hidden bg-white border-t border-slate-100 p-4 absolute top-[100%] left-0 w-full shadow-[0_10px_25px_rgba(0,0,0,0.1)] z-50">
             <nav className="flex flex-col gap-2">
               <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="p-3 font-bold text-slate-700 hover:bg-slate-50 rounded-xl">Home</Link>
-              <Link to="/?category=Microcontrollers" onClick={() => setIsMobileMenuOpen(false)} className="p-3 font-bold text-slate-700 hover:bg-slate-50 rounded-xl">Microcontrollers</Link>
+              <Link to="/?category=Explore" onClick={() => setIsMobileMenuOpen(false)} className="p-3 font-bold text-slate-700 hover:bg-slate-50 rounded-xl">Explore</Link>
               <Link to="/?category=Projects" onClick={() => setIsMobileMenuOpen(false)} className="p-3 font-bold text-slate-700 hover:bg-slate-50 rounded-xl">Projects</Link>
               <Link to="/?view=new" onClick={() => setIsMobileMenuOpen(false)} className="p-3 font-bold text-slate-700 hover:bg-slate-50 rounded-xl flex items-center gap-2">Newly Added <span className="bg-rose-500 text-white text-[10px] px-2 py-0.5 rounded-full">NEW</span></Link>
               <Link to="/blog" onClick={() => setIsMobileMenuOpen(false)} className="p-3 font-bold text-slate-700 hover:bg-slate-50 rounded-xl">Blog</Link>
               <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="p-3 font-bold text-slate-700 hover:bg-slate-50 rounded-xl">Contact Us</Link>
               
-              {currentUser ? (
-                <button onClick={handleLogout} className="p-3 font-bold text-rose-500 bg-rose-50 hover:bg-rose-100 rounded-xl text-center mt-2 w-full text-left">Log Out</button>
+              {/* Dynamic Auth for Mobile */}
+              {isAdminLoggedIn ? (
+                <Link to="/admin" className="p-3 font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl text-center mt-2 w-full flex items-center justify-center gap-2"><Lock size={16} className="text-[#45c4f0]"/> Admin Dashboard</Link>
+              ) : currentUser ? (
+                <div className="mt-2 pt-2 border-t border-slate-100">
+                   <div className="p-3 flex items-center gap-3">
+                     <div className="h-10 w-10 bg-gradient-to-br from-[#2a64f6] to-[#45c4f0] rounded-full flex items-center justify-center text-white font-black shadow-sm shrink-0">
+                        {currentUserName ? currentUserName.charAt(0).toUpperCase() : 'U'}
+                     </div>
+                     <div className="overflow-hidden">
+                       <p className="text-[14px] font-black text-slate-800 truncate">{currentUserName}</p>
+                       <p className="text-[12px] font-bold text-slate-400 truncate">{currentUser}</p>
+                     </div>
+                   </div>
+                   <button onClick={handleLogout} className="p-3 font-bold text-rose-500 bg-rose-50 hover:bg-rose-100 rounded-xl text-center w-full flex items-center justify-center gap-2 mt-1"><LogOut size={16}/> Log Out</button>
+                </div>
               ) : (
-                <button onClick={() => {setIsMobileMenuOpen(false); setIsSignUpMode(false); setIsLoginModalOpen(true);}} className="p-3 font-bold text-white bg-[#45c4f0] rounded-xl text-center mt-2 w-full">Log In / Register</button>
+                <button onClick={() => {setIsMobileMenuOpen(false); setIsSignUpMode(false); setIsLoginModalOpen(true);}} className="p-3 font-bold text-white bg-[#45c4f0] rounded-xl text-center mt-2 w-full shadow-sm hover:bg-[#3ab0d9]">Log In / Register</button>
               )}
             </nav>
           </div>

@@ -3,20 +3,18 @@ import { Trash2, Save, FileText, Box, Pencil, X, FolderKanban, Upload, Image as 
 import { supabase } from './supabaseClient'; 
 
 export default function Admin() {
-  // --- ADMIN AUTHENTICATION (Now strictly Session-Based) ---
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(sessionStorage.getItem('ktronic_admin_auth') === 'true');
   const [loginPass, setLoginPass] = useState('');
 
-  // --- DASHBOARD STATES ---
   const [activeTab, setActiveTab] = useState('products');
   
   const [products, setProducts] = useState([]);
   const [categoryDetails, setCategoryDetails] = useState([]);
   const [blogs, setBlogs] = useState([]);
   
-  // Settings State 
+  // Settings State - Added siteLogo
   const [siteSettings, setSiteSettings] = useState({
-    siteName: 'Ktronics', phone: '+92 311 1486790', email: 'support@ktronics.tech', address: '',
+    siteName: 'Ktronics', siteLogo: '', phone: '+92 311 1486790', email: 'support@ktronics.tech', address: '',
     facebook: '', instagram: '', twitter: '', pinterest: '', linkedin: '', youtube: '', tiktok: ''
   });
 
@@ -42,7 +40,7 @@ export default function Admin() {
     if (blogData) setBlogs(blogData);
     if (settingsData) {
       setSiteSettings({
-        siteName: settingsData.site_name || '', phone: settingsData.phone || '', email: settingsData.email || '',
+        siteName: settingsData.site_name || '', siteLogo: settingsData.site_logo || '', phone: settingsData.phone || '', email: settingsData.email || '',
         address: settingsData.address || '', facebook: settingsData.facebook || '', instagram: settingsData.instagram || '',
         twitter: settingsData.twitter || '', pinterest: settingsData.pinterest || '', linkedin: settingsData.linkedin || '',
         youtube: settingsData.youtube || '', tiktok: settingsData.tiktok || ''
@@ -51,7 +49,6 @@ export default function Admin() {
   };
 
   useEffect(() => {
-    // Only fetch the sensitive data if they are actually logged in
     if (isAdminLoggedIn) {
       fetchAdminData();
     }
@@ -73,6 +70,17 @@ export default function Admin() {
     setLoginPass('');
   };
 
+  const safeStorageSave = (key, data) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+      window.dispatchEvent(new Event('storage'));
+      return true;
+    } catch (e) {
+      alert("⚠️ Storage Limit Exceeded! The image file you uploaded is too large. Please use an image under 500kb or paste an Image URL instead.");
+      return false;
+    }
+  };
+
   const handleImageUpload = (e, formType) => {
     const file = e.target.files[0];
     if (file) {
@@ -82,12 +90,13 @@ export default function Admin() {
         if (formType === 'product') setProductForm({ ...productForm, image: reader.result });
         if (formType === 'category') setCategoryForm({ ...categoryForm, image: reader.result });
         if (formType === 'blog') setBlogForm({ ...blogForm, image: reader.result });
+        if (formType === 'logo') setSiteSettings({ ...siteSettings, siteLogo: reader.result });
       };
       reader.readAsDataURL(file);
     }
   };
 
-  // --- SUPABASE PRODUCT MANAGEMENT ---
+  // --- PRODUCT MANAGEMENT ---
   const handleProductSubmit = async (e) => {
     e.preventDefault();
     if (!productForm.image) return alert("⚠️ Product Image is compulsory!");
@@ -124,7 +133,7 @@ export default function Admin() {
     }
   };
 
-  // --- SUPABASE CATEGORY MANAGEMENT ---
+  // --- CATEGORY MANAGEMENT ---
   const handleCategorySubmit = async (e) => {
     e.preventDefault();
     if (!categoryForm.image) return alert("⚠️ Category Cover Image is compulsory!");
@@ -159,7 +168,7 @@ export default function Admin() {
     }
   };
 
-  // --- SUPABASE BLOG MANAGEMENT ---
+  // --- BLOG MANAGEMENT ---
   const handleBlogSubmit = async (e) => {
     e.preventDefault();
     if (!blogForm.image) return alert("⚠️ Blog Cover Image is compulsory!");
@@ -197,11 +206,11 @@ export default function Admin() {
     }
   };
 
-  // --- SUPABASE SITE SETTINGS MANAGEMENT ---
+  // --- SITE SETTINGS MANAGEMENT ---
   const handleSettingsSubmit = async (e) => {
     e.preventDefault();
     const payload = {
-      id: 1, site_name: siteSettings.siteName, phone: siteSettings.phone, email: siteSettings.email,
+      id: 1, site_name: siteSettings.siteName, site_logo: siteSettings.siteLogo, phone: siteSettings.phone, email: siteSettings.email,
       address: siteSettings.address, facebook: siteSettings.facebook, instagram: siteSettings.instagram,
       twitter: siteSettings.twitter, pinterest: siteSettings.pinterest, linkedin: siteSettings.linkedin,
       youtube: siteSettings.youtube, tiktok: siteSettings.tiktok
@@ -209,13 +218,11 @@ export default function Admin() {
     const { error } = await supabase.from('site_settings').upsert(payload);
     if(error) return alert(error.message);
     
-    // Update local cache so Header/Footer notice the change immediately
     localStorage.setItem('ktronic_settings', JSON.stringify(siteSettings));
     window.dispatchEvent(new Event('settingsUpdated'));
     alert("Global Site Settings updated in Supabase!");
   };
 
-  // --- LOGIN SCREEN RENDER ---
   if (!isAdminLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-nunito p-4">
@@ -425,6 +432,23 @@ export default function Admin() {
                <h2 className="text-2xl font-black text-slate-800">Global Site Settings</h2>
             </div>
             <form onSubmit={handleSettingsSubmit} className="space-y-6">
+              
+              {/* Site Logo Uploader */}
+              <div className="border border-slate-200 p-4 rounded-xl bg-slate-50">
+                <label className="block text-sm font-black text-slate-800 mb-3">Site Logo Image</label>
+                <div className="space-y-3">
+                  <input type="text" placeholder="Paste Logo Image URL..." value={siteSettings.siteLogo} onChange={e => setSiteSettings({...siteSettings, siteLogo: e.target.value})} className="w-full border border-slate-200 p-3 rounded-lg outline-none focus:border-[#45c4f0] font-semibold text-sm" />
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs font-bold text-slate-400 uppercase">OR</span>
+                    <label className="cursor-pointer bg-white border border-slate-200 px-4 py-2.5 rounded-lg text-sm font-bold text-slate-600 hover:bg-[#eef6ff] flex items-center gap-2 transition-all shadow-sm">
+                      <Upload size={16}/> Upload Logo
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'logo')} />
+                    </label>
+                  </div>
+                </div>
+                {siteSettings.siteLogo && <div className="mt-4 w-24 h-24 rounded-xl border bg-white p-2 flex items-center justify-center overflow-hidden shadow-sm"><img src={siteSettings.siteLogo} alt="Site Logo" className="max-w-full max-h-full object-contain" /></div>}
+              </div>
+
               <div>
                  <label className="block text-sm font-black text-slate-800 mb-2">Platform Name</label>
                  <input required type="text" placeholder="e.g. Ktronics" value={siteSettings.siteName} onChange={e => setSiteSettings({...siteSettings, siteName: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3.5 rounded-xl outline-none focus:border-[#45c4f0] font-bold text-slate-900" />
