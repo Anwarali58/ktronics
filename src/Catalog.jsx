@@ -29,10 +29,7 @@ export default function Catalog() {
     const { data: prodData } = await supabase.from('products').select('*').order('created_at', { ascending: false });
     const { data: catData } = await supabase.from('categories').select('*');
 
-    if (prodData) {
-      setProducts(prodData.map(p => ({...p, productUrl: p.product_url})));
-    }
-    
+    if (prodData) setProducts(prodData.map(p => ({...p, productUrl: p.product_url})));
     if (catData) {
       setCategoryDetails(catData);
       setCategories(['All', ...catData.map(c => c.name)]);
@@ -41,16 +38,12 @@ export default function Catalog() {
 
   useEffect(() => {
     fetchDatabase();
-    
     const handleOpenDetail = (e) => {
       setSelectedProduct(e.detail);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
     window.addEventListener('openProductDetail', handleOpenDetail);
-
-    return () => {
-      window.removeEventListener('openProductDetail', handleOpenDetail);
-    };
+    return () => window.removeEventListener('openProductDetail', handleOpenDetail);
   }, []);
 
   const handleAddToCart = (e, product) => {
@@ -80,25 +73,16 @@ export default function Catalog() {
     return () => clearInterval(timer);
   }, []);
 
-  // --- INTELLIGENT FILTERING LOGIC ---
-  // This ensures that clicking the "Projects" nav button shows all sub-categories combined
   const filteredProducts = products.filter(p => {
     let matchesCat = false;
-    
-    if (activeCategory === 'All') {
-      matchesCat = true;
-    } else if (activeCategory === 'Projects' || activeCategory === 'Explore') {
-      // If parent "Projects" is clicked, bundle these related categories together
+    if (activeCategory === 'All') matchesCat = true;
+    else if (activeCategory === 'Projects' || activeCategory === 'Explore') {
       const projectRelated = ['projects', 'iot', 'arduino', 'drone', 'robotics'];
       matchesCat = projectRelated.some(c => p.category.toLowerCase().includes(c)) || p.category === activeCategory;
-    } else {
-      matchesCat = p.category === activeCategory;
-    }
+    } else matchesCat = p.category === activeCategory;
 
     const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = p.name.toLowerCase().includes(searchLower) || p.category.toLowerCase().includes(searchLower);
-    
-    return matchesCat && matchesSearch;
+    return matchesCat && (p.name.toLowerCase().includes(searchLower) || p.category.toLowerCase().includes(searchLower));
   });
 
   const newlyAddedProducts = [...products].slice(0, 8);
@@ -139,35 +123,64 @@ export default function Catalog() {
         <span className="font-black text-slate-800 text-[16px] leading-snug mb-3 line-clamp-2 group-hover:text-[#2a64f6] transition-colors">{product.name}</span>
         <div className="mt-auto flex items-end justify-between">
           <p className="font-black text-slate-900 text-[20px] leading-none tracking-tight">{product.price}</p>
-          <p className="text-[10px] font-black text-[#2ed573] bg-[#2ed573]/10 px-2.5 py-1 rounded-md">IN STOCK</p>
+          <p className="text-[10px] font-black text-[#2ed573] bg-[#2ed573]/10 border border-[#2ed573]/20 px-2.5 py-1 rounded-md">IN STOCK</p>
         </div>
       </div>
     </div>
   );
 
+  // --- DETAILED VIEW (REDESIGNED SIDEBAR LAYOUT) ---
   if (selectedProduct) {
     return (
-      <div className="min-h-screen bg-transparent font-nunito pb-20 animate-fade-in-up relative z-10">
-        <div className="fixed inset-0 z-[-2] opacity-[0.04] pointer-events-none mix-blend-multiply" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1518770660439-4636190af475?w=2000&q=80')", backgroundAttachment: "fixed", backgroundSize: "cover", backgroundPosition: "center" }}></div>
-        <div className="max-w-[1300px] mx-auto px-6 lg:px-12 py-8 mt-6">
-          <button onClick={() => setSelectedProduct(null)} className="flex items-center gap-2 text-slate-500 hover:text-[#45c4f0] font-bold mb-8 transition-colors bg-white/80 backdrop-blur-md border border-slate-200 px-5 py-2.5 rounded-full w-max shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
-            <ChevronLeft size={18} /> Back to Catalog
-          </button>
-          <div className="flex flex-col md:flex-row gap-10 lg:gap-16 bg-white/90 backdrop-blur-xl p-8 lg:p-12 rounded-[40px] shadow-[0_8px_40px_rgba(0,0,0,0.04)] border border-white">
-            <div className="w-full md:w-1/2 bg-[#f4f7f9] rounded-3xl p-8 flex items-center justify-center border border-slate-100 min-h-[400px]">
-              <img src={selectedProduct.image} alt={selectedProduct.name} className="max-w-full max-h-[500px] object-contain mix-blend-multiply drop-shadow-xl" />
-            </div>
-            <div className="w-full md:w-1/2 flex flex-col justify-center">
-              <span className="bg-[#2a64f6]/10 text-[#2a64f6] px-4 py-1.5 rounded-full font-black text-sm w-max mb-5 tracking-wide uppercase">{selectedProduct.category}</span>
-              <h1 className="text-3xl sm:text-4xl font-black text-slate-900 mb-4 leading-tight">{selectedProduct.name}</h1>
-              <div className="flex items-center gap-1 mb-6">
-                {[...Array(5)].map((_, i) => <svg key={i} className="w-5 h-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>)}
-                <span className="text-slate-400 text-sm ml-2 font-bold">(Verified Quality)</span>
+      <div className="min-h-screen bg-slate-50 font-nunito pb-24 animate-fade-in-up">
+        
+        {/* Clean Header Bar */}
+        <div className="w-full bg-white border-b border-slate-200 py-6 px-6 lg:px-12 sticky top-0 z-50 shadow-sm">
+          <div className="max-w-[1400px] mx-auto flex items-center justify-between">
+            <button onClick={() => setSelectedProduct(null)} className="flex items-center gap-2 text-slate-500 hover:text-[#2a64f6] font-bold transition-colors">
+              <ChevronLeft size={20} /> Back to Catalog
+            </button>
+            <span className="bg-[#eef6ff] text-[#2a64f6] px-4 py-1.5 rounded-full text-xs font-black tracking-wide uppercase">
+              {selectedProduct.category}
+            </span>
+          </div>
+        </div>
+
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-12 pt-12">
+          
+          <div className="flex flex-col lg:flex-row gap-12 bg-white p-8 sm:p-12 rounded-[40px] shadow-[0_8px_40px_rgba(0,0,0,0.04)] border border-slate-100">
+            
+            {/* LEFT SIDEBAR: Static Image & Reviews (No awkward sticky scrolling) */}
+            <div className="w-full lg:w-1/3 flex flex-col gap-6 shrink-0">
+              <div className="bg-[#f8fafc] rounded-3xl p-6 border border-slate-100 flex items-center justify-center min-h-[300px]">
+                <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-auto max-h-[400px] object-contain mix-blend-multiply" />
               </div>
-              <p className="text-4xl font-black text-slate-900 mb-2">{selectedProduct.price}</p>
-              <p className="text-sm text-[#2ed573] font-bold mb-6 flex items-center gap-1.5"><CheckCircle2 size={16}/> In Stock & Ready to Ship</p>
-              <p className="text-slate-600 font-medium text-[17px] leading-relaxed mb-8">{selectedProduct.description || "Premium quality electronic component designed for high reliability and performance."}</p>
-              <div className="flex flex-wrap gap-4">
+              
+              <div className="bg-amber-50 rounded-2xl p-6 border border-amber-100 flex flex-col items-center justify-center text-center">
+                <div className="flex items-center justify-center gap-1 mb-2">
+                  {[...Array(5)].map((_, i) => <svg key={i} className="w-6 h-6 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>)}
+                </div>
+                <span className="text-amber-700 font-black text-sm uppercase tracking-widest">Verified High Quality</span>
+                <p className="text-amber-600/80 text-xs font-bold mt-1">Based on Customer Reviews</p>
+              </div>
+            </div>
+            
+            {/* RIGHT COLUMN: Full Wide Description & Bottom Buttons */}
+            <div className="w-full lg:w-2/3 flex flex-col">
+              <h1 className="text-4xl sm:text-5xl font-black text-slate-900 mb-4 leading-tight tracking-tight">{selectedProduct.name}</h1>
+              
+              <div className="flex items-center gap-6 mb-8">
+                <p className="text-5xl font-black text-[#2a64f6]">{selectedProduct.price}</p>
+                <p className="text-sm text-[#2ed573] font-bold flex items-center gap-1.5 bg-[#2ed573]/10 px-4 py-2 rounded-xl"><CheckCircle2 size={18}/> In Stock & Ready to Ship</p>
+              </div>
+              
+              {/* Natural Break-Word Text Container Spanning Full Width */}
+              <div className="text-slate-600 font-medium text-[18px] leading-relaxed whitespace-pre-wrap word-break break-words flex-grow mb-12">
+                {selectedProduct.description || "Premium quality electronic component designed for high reliability and performance in your next DIY or professional tech project."}
+              </div>
+              
+              {/* Buttons Firmly at the Bottom */}
+              <div className="flex flex-wrap gap-4 pt-8 border-t border-slate-100 mt-auto">
                 <button onClick={(e) => handleAddToCart(e, selectedProduct)} className="flex-1 min-w-[200px] bg-[#2a64f6] hover:bg-blue-700 text-white font-black py-4 rounded-xl shadow-[0_4px_14px_rgba(42,100,246,0.3)] transition-all hover:-translate-y-0.5 flex justify-center items-center gap-2 text-lg">
                   <ShoppingCart size={22} /> Add to Cart
                 </button>
@@ -176,12 +189,14 @@ export default function Catalog() {
                 </a>
               </div>
             </div>
+
           </div>
         </div>
       </div>
     );
   }
 
+  // --- GRID LIST VIEW ---
   return (
     <div className="min-h-screen font-nunito text-slate-800 pb-20 relative bg-[#f4f7f9] overflow-hidden z-10">
       
@@ -250,6 +265,7 @@ export default function Catalog() {
               </div>
             </div>
 
+            {/* STUNNING CATEGORY CARDS */}
             {categoryDetails.length > 0 && (
               <div className="pt-4 relative group/cat">
                 <div className="flex items-center justify-between mb-8">

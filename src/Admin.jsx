@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Trash2, Save, FileText, Box, Pencil, X, FolderKanban, Upload, Image as ImageIcon, Settings, Lock, LogOut } from 'lucide-react';
 import { supabase } from './supabaseClient'; 
+import { Editor } from '@tinymce/tinymce-react'; 
 
 export default function Admin() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(sessionStorage.getItem('ktronic_admin_auth') === 'true');
@@ -12,7 +13,6 @@ export default function Admin() {
   const [categoryDetails, setCategoryDetails] = useState([]);
   const [blogs, setBlogs] = useState([]);
   
-  // Settings State - Added siteLogo
   const [siteSettings, setSiteSettings] = useState({
     siteName: 'Ktronics', siteLogo: '', phone: '+92 311 1486790', email: 'support@ktronics.tech', address: '',
     facebook: '', instagram: '', twitter: '', pinterest: '', linkedin: '', youtube: '', tiktok: ''
@@ -33,9 +33,7 @@ export default function Admin() {
     const { data: blogData } = await supabase.from('blogs').select('*').order('id', { ascending: false });
     const { data: settingsData } = await supabase.from('site_settings').select('*').eq('id', 1).single();
 
-    if (prodData) {
-      setProducts(prodData.map(p => ({...p, productUrl: p.product_url})));
-    }
+    if (prodData) setProducts(prodData.map(p => ({...p, productUrl: p.product_url})));
     if (catData) setCategoryDetails(catData);
     if (blogData) setBlogs(blogData);
     if (settingsData) {
@@ -49,9 +47,7 @@ export default function Admin() {
   };
 
   useEffect(() => {
-    if (isAdminLoggedIn) {
-      fetchAdminData();
-    }
+    if (isAdminLoggedIn) fetchAdminData();
   }, [isAdminLoggedIn]);
 
   const handleAdminLogin = (e) => {
@@ -68,17 +64,6 @@ export default function Admin() {
     sessionStorage.removeItem('ktronic_admin_auth');
     setIsAdminLoggedIn(false);
     setLoginPass('');
-  };
-
-  const safeStorageSave = (key, data) => {
-    try {
-      localStorage.setItem(key, JSON.stringify(data));
-      window.dispatchEvent(new Event('storage'));
-      return true;
-    } catch (e) {
-      alert("⚠️ Storage Limit Exceeded! The image file you uploaded is too large. Please use an image under 500kb or paste an Image URL instead.");
-      return false;
-    }
   };
 
   const handleImageUpload = (e, formType) => {
@@ -127,7 +112,7 @@ export default function Admin() {
   };
 
   const handleDeleteProduct = async (id) => {
-    if(window.confirm("Permanently delete this product from the database?")) {
+    if(window.confirm("Permanently delete this product?")) {
       await supabase.from('products').delete().eq('id', id);
       fetchAdminData();
     }
@@ -257,6 +242,7 @@ export default function Admin() {
         </div>
       </div>
 
+      {/* PRODUCTS TAB */}
       {activeTab === 'products' && (
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm h-max sticky top-24">
@@ -324,6 +310,7 @@ export default function Admin() {
         </div>
       )}
 
+      {/* CATEGORIES TAB */}
       {activeTab === 'categories' && (
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1 bg-white p-6 sm:p-8 rounded-3xl border shadow-sm h-max sticky top-24">
@@ -372,21 +359,51 @@ export default function Admin() {
         </div>
       )}
 
+      {/* BLOGS TAB WITH TINYMCE (FREE MULTIPLE IMAGE UPLOADS ENABLED) */}
       {activeTab === 'blogs' && (
         <div className="flex flex-col lg:flex-row gap-8">
-          <div className="flex-1 bg-white p-6 sm:p-8 rounded-3xl border shadow-sm h-max sticky top-24">
+          <div className="flex-1 bg-white p-6 sm:p-8 rounded-3xl border shadow-sm h-max">
             <div className="flex items-center justify-between mb-6 border-b pb-4">
                <h2 className="text-2xl font-black">{editingBlogId ? 'Edit Blog' : 'Write New Blog'}</h2>
                {editingBlogId && <button onClick={() => { setBlogForm({ title: '', category: '', snippet: '', image: '' }); setEditingBlogId(null); }} className="text-rose-500 text-sm font-bold flex items-center gap-1 hover:bg-rose-50 px-3 py-1.5 rounded-full"><X size={16} /> Cancel</button>}
             </div>
             <form onSubmit={handleBlogSubmit} className="space-y-5">
               <input type="text" required placeholder="Blog Title" value={blogForm.title} onChange={e => setBlogForm({...blogForm, title: e.target.value})} className="w-full border bg-slate-50 p-3.5 rounded-xl font-semibold outline-none focus:border-[#45c4f0]" />
-              <input type="text" required placeholder="Category Tag" value={blogForm.category} onChange={e => setBlogForm({...blogForm, category: e.target.value})} className="w-full border bg-slate-50 p-3.5 rounded-xl font-semibold outline-none focus:border-[#45c4f0]" />
-              <textarea required rows="6" placeholder="Full Blog Content..." value={blogForm.snippet} onChange={e => setBlogForm({...blogForm, snippet: e.target.value})} className="w-full border bg-slate-50 p-3.5 rounded-xl font-semibold outline-none focus:border-[#45c4f0] custom-scrollbar"></textarea>
+              <input type="text" required placeholder="Category Tag (e.g. Tutorial)" value={blogForm.category} onChange={e => setBlogForm({...blogForm, category: e.target.value})} className="w-full border bg-slate-50 p-3.5 rounded-xl font-semibold outline-none focus:border-[#45c4f0]" />
+              
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                <p className="px-4 pt-3 pb-1 text-xs font-bold text-slate-400 bg-slate-50">Content Editor (Drag & Drop Images Supported!)</p>
+                <Editor
+                  // ====== YOUR API KEY IS HERE ======
+                  apiKey="ywlcot2gzhfz4c02f7z3zt7mn1pl6637txauyhvy4v9g6bul" 
+                  value={blogForm.snippet}
+                  onEditorChange={(content) => setBlogForm({...blogForm, snippet: content})}
+                  init={{
+                    height: 500,
+                    menubar: true,
+                    plugins: [
+                      'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                      'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                      'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+                    ],
+                    toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist | image link | removeformat | code',
+                    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:16px; line-height: 1.6; }',
+                    
+                    // THIS ALLOWS FREE IMAGE UPLOADS BY CONVERTING TO BASE64
+                    images_upload_handler: (blobInfo, progress) => new Promise((resolve, reject) => {
+                      const reader = new FileReader();
+                      reader.readAsDataURL(blobInfo.blob());
+                      reader.onload = () => resolve(reader.result);
+                      reader.onerror = error => reject(error);
+                    })
+                  }}
+                />
+              </div>
+
               <div className="border p-4 rounded-xl bg-slate-50">
-                <label className="block text-sm font-black mb-3">Cover Image <span className="text-rose-500">*</span></label>
+                <label className="block text-sm font-black mb-3">Main Cover Image (Appears on Thumbnail) <span className="text-rose-500">*</span></label>
                 <div className="space-y-3">
-                  <input type="text" placeholder="Paste Image URL..." value={blogForm.image} onChange={e => setBlogForm({...blogForm, image: e.target.value})} className="w-full border p-3 rounded-lg outline-none focus:border-[#45c4f0] font-semibold text-sm" />
+                  <input type="text" placeholder="Paste Cover Image URL..." value={blogForm.image} onChange={e => setBlogForm({...blogForm, image: e.target.value})} className="w-full border p-3 rounded-lg outline-none focus:border-[#45c4f0] font-semibold text-sm" />
                   <div className="flex items-center gap-4">
                     <span className="text-xs font-bold text-slate-400 uppercase">OR</span>
                     <label className="cursor-pointer bg-white border px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#eef6ff] shadow-sm transition-colors">
@@ -402,21 +419,21 @@ export default function Admin() {
               </button>
             </form>
           </div>
-          <div className="flex-[1.5] bg-[#f8fafc] p-6 rounded-3xl border shadow-sm h-[850px] overflow-auto custom-scrollbar flex flex-col">
+
+          <div className="w-[400px] shrink-0 bg-[#f8fafc] p-6 rounded-3xl border shadow-sm h-[850px] overflow-auto custom-scrollbar flex flex-col">
             <h2 className="text-xl font-black mb-6 border-b pb-4">Live Blogs ({blogs.length})</h2>
             <div className="space-y-4 pr-2 flex-1 overflow-y-auto custom-scrollbar pb-4">
               {blogs.map(b => (
-                <div key={b.id} className="bg-white p-4 border rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-shadow group">
-                  <div className="flex items-center gap-4 overflow-hidden">
-                    <img src={b.image} className="w-20 h-20 rounded-xl object-cover shrink-0 border" alt=""/>
-                    <div className="min-w-0">
-                      <h4 className="font-black text-[16px] truncate text-slate-800">{b.title}</h4>
-                      <span className="text-[12px] font-bold text-slate-500 mt-1 block">{b.date} • <span className="text-[#2a64f6]">{b.category}</span></span>
-                    </div>
+                <div key={b.id} className="bg-white p-4 border rounded-2xl flex flex-col shadow-sm hover:shadow-md transition-shadow group relative">
+                  <div className="relative h-32 w-full rounded-xl overflow-hidden mb-3 border">
+                    <img src={b.image} className="w-full h-full object-cover" alt=""/>
                   </div>
-                  <div className="flex gap-1 shrink-0 ml-4">
-                    <button onClick={() => handleEditBlog(b)} className="text-[#2a64f6] p-2 hover:bg-[#eef6ff] rounded-lg transition-colors"><Pencil size={18}/></button>
-                    <button onClick={() => handleDeleteBlog(b.id)} className="text-rose-500 p-2 hover:bg-rose-50 rounded-lg transition-colors"><Trash2 size={18}/></button>
+                  <h4 className="font-black text-[16px] leading-tight line-clamp-2 text-slate-800">{b.title}</h4>
+                  <span className="text-[12px] font-bold text-slate-500 mt-1 block">{b.date} • <span className="text-[#2a64f6]">{b.category}</span></span>
+                  
+                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur p-1 rounded-lg border shadow-sm">
+                    <button onClick={() => handleEditBlog(b)} className="text-[#2a64f6] p-1.5 hover:bg-[#eef6ff] rounded-md transition-colors"><Pencil size={16}/></button>
+                    <button onClick={() => handleDeleteBlog(b.id)} className="text-rose-500 p-1.5 hover:bg-rose-50 rounded-md transition-colors"><Trash2 size={16}/></button>
                   </div>
                 </div>
               ))}
@@ -425,6 +442,7 @@ export default function Admin() {
         </div>
       )}
 
+      {/* SETTINGS TAB */}
       {activeTab === 'settings' && (
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm">
@@ -433,7 +451,6 @@ export default function Admin() {
             </div>
             <form onSubmit={handleSettingsSubmit} className="space-y-6">
               
-              {/* Site Logo Uploader */}
               <div className="border border-slate-200 p-4 rounded-xl bg-slate-50">
                 <label className="block text-sm font-black text-slate-800 mb-3">Site Logo Image</label>
                 <div className="space-y-3">
@@ -459,47 +476,13 @@ export default function Admin() {
                     <input required type="text" placeholder="+92 311 1486790" value={siteSettings.phone} onChange={e => setSiteSettings({...siteSettings, phone: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3.5 rounded-xl outline-none focus:border-[#45c4f0] font-bold text-slate-900" />
                  </div>
                  <div>
-                    <label className="block text-sm font-black text-slate-800 mb-2">Support Email Address</label>
+                    <label className="block text-sm font-black text-slate-800 mb-2">Support Email Address (Also used for Contact Form)</label>
                     <input required type="email" placeholder="support@ktronics.tech" value={siteSettings.email} onChange={e => setSiteSettings({...siteSettings, email: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3.5 rounded-xl outline-none focus:border-[#45c4f0] font-bold text-slate-900" />
                  </div>
               </div>
               <div>
                  <label className="block text-sm font-black text-slate-800 mb-2">Physical Address</label>
                  <input required type="text" placeholder="Tech Hub, Building 4..." value={siteSettings.address} onChange={e => setSiteSettings({...siteSettings, address: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3.5 rounded-xl outline-none focus:border-[#45c4f0] font-bold text-slate-900" />
-              </div>
-
-              <div className="pt-4 border-t border-slate-100">
-                 <h3 className="text-lg font-black text-slate-800 mb-4">Social Media Links</h3>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                       <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Facebook URL</label>
-                       <input type="url" placeholder="https://facebook.com/..." value={siteSettings.facebook} onChange={e => setSiteSettings({...siteSettings, facebook: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3 rounded-lg outline-none focus:border-[#2a64f6] font-semibold text-sm" />
-                    </div>
-                    <div>
-                       <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Instagram URL</label>
-                       <input type="url" placeholder="https://instagram.com/..." value={siteSettings.instagram} onChange={e => setSiteSettings({...siteSettings, instagram: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3 rounded-lg outline-none focus:border-[#e1306c] font-semibold text-sm" />
-                    </div>
-                    <div>
-                       <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Twitter/X URL</label>
-                       <input type="url" placeholder="https://twitter.com/..." value={siteSettings.twitter} onChange={e => setSiteSettings({...siteSettings, twitter: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3 rounded-lg outline-none focus:border-slate-800 font-semibold text-sm" />
-                    </div>
-                    <div>
-                       <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Pinterest URL</label>
-                       <input type="url" placeholder="https://pinterest.com/..." value={siteSettings.pinterest} onChange={e => setSiteSettings({...siteSettings, pinterest: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3 rounded-lg outline-none focus:border-[#cb2027] font-semibold text-sm" />
-                    </div>
-                    <div>
-                       <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">LinkedIn URL</label>
-                       <input type="url" placeholder="https://linkedin.com/..." value={siteSettings.linkedin} onChange={e => setSiteSettings({...siteSettings, linkedin: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3 rounded-lg outline-none focus:border-[#007bb5] font-semibold text-sm" />
-                    </div>
-                    <div>
-                       <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">YouTube URL</label>
-                       <input type="url" placeholder="https://youtube.com/..." value={siteSettings.youtube} onChange={e => setSiteSettings({...siteSettings, youtube: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3 rounded-lg outline-none focus:border-[#ff0000] font-semibold text-sm" />
-                    </div>
-                    <div>
-                       <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">TikTok URL</label>
-                       <input type="url" placeholder="https://tiktok.com/..." value={siteSettings.tiktok} onChange={e => setSiteSettings({...siteSettings, tiktok: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3 rounded-lg outline-none focus:border-black font-semibold text-sm" />
-                    </div>
-                 </div>
               </div>
 
               <button type="submit" className="w-full bg-[#2a64f6] text-white py-4 rounded-xl font-black shadow-md flex justify-center gap-2 transition-transform hover:-translate-y-0.5 hover:bg-blue-700 mt-4">
