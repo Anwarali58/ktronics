@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Trash2, Save, FileText, Box, Pencil, X, FolderKanban, Upload, Image as ImageIcon, Settings, Lock, LogOut } from 'lucide-react';
 import { supabase } from './supabaseClient'; 
-import { Editor } from '@tinymce/tinymce-react'; 
+import { Editor } from '@tinymce/tinymce-react';
 
 export default function Admin() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(sessionStorage.getItem('ktronic_admin_auth') === 'true');
@@ -374,7 +374,6 @@ export default function Admin() {
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                 <p className="px-4 pt-3 pb-1 text-xs font-bold text-slate-400 bg-slate-50">Content Editor (Drag & Drop Images Supported!)</p>
                 <Editor
-                  // ====== YOUR API KEY IS HERE ======
                   apiKey="ywlcot2gzhfz4c02f7z3zt7mn1pl6637txauyhvy4v9g6bul" 
                   value={blogForm.snippet}
                   onEditorChange={(content) => setBlogForm({...blogForm, snippet: content})}
@@ -388,14 +387,28 @@ export default function Admin() {
                     ],
                     toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist | image link | removeformat | code',
                     content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:16px; line-height: 1.6; }',
-                    
-                    // THIS ALLOWS FREE IMAGE UPLOADS BY CONVERTING TO BASE64
-                    images_upload_handler: (blobInfo, progress) => new Promise((resolve, reject) => {
-                      const reader = new FileReader();
-                      reader.readAsDataURL(blobInfo.blob());
-                      reader.onload = () => resolve(reader.result);
-                      reader.onerror = error => reject(error);
-                    })
+                    image_title: true,
+                    automatic_uploads: true,
+                    file_picker_types: 'image',
+                    file_picker_callback: function (cb, value, meta) {
+                      var input = document.createElement('input');
+                      input.setAttribute('type', 'file');
+                      input.setAttribute('accept', 'image/*');
+                      input.onchange = function () {
+                        var file = this.files[0];
+                        var reader = new FileReader();
+                        reader.onload = function () {
+                          var id = 'blobid' + (new Date()).getTime();
+                          var blobCache =  tinymce.activeEditor.editorUpload.blobCache;
+                          var base64 = reader.result.split(',')[1];
+                          var blobInfo = blobCache.create(id, file, base64);
+                          blobCache.add(blobInfo);
+                          cb(blobInfo.blobUri(), { title: file.name });
+                        };
+                        reader.readAsDataURL(file);
+                      };
+                      input.click();
+                    }
                   }}
                 />
               </div>
@@ -483,6 +496,41 @@ export default function Admin() {
               <div>
                  <label className="block text-sm font-black text-slate-800 mb-2">Physical Address</label>
                  <input required type="text" placeholder="Tech Hub, Building 4..." value={siteSettings.address} onChange={e => setSiteSettings({...siteSettings, address: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3.5 rounded-xl outline-none focus:border-[#45c4f0] font-bold text-slate-900" />
+              </div>
+
+              {/* RESTORED SOCIAL MEDIA LINKS SECTION */}
+              <div className="pt-4 border-t border-slate-100">
+                 <h3 className="text-lg font-black text-slate-800 mb-4">Social Media Links</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                       <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Facebook URL</label>
+                       <input type="url" placeholder="https://facebook.com/..." value={siteSettings.facebook} onChange={e => setSiteSettings({...siteSettings, facebook: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3 rounded-lg outline-none focus:border-[#2a64f6] font-semibold text-sm" />
+                    </div>
+                    <div>
+                       <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Instagram URL</label>
+                       <input type="url" placeholder="https://instagram.com/..." value={siteSettings.instagram} onChange={e => setSiteSettings({...siteSettings, instagram: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3 rounded-lg outline-none focus:border-[#e1306c] font-semibold text-sm" />
+                    </div>
+                    <div>
+                       <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Twitter/X URL</label>
+                       <input type="url" placeholder="https://twitter.com/..." value={siteSettings.twitter} onChange={e => setSiteSettings({...siteSettings, twitter: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3 rounded-lg outline-none focus:border-slate-800 font-semibold text-sm" />
+                    </div>
+                    <div>
+                       <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Pinterest URL</label>
+                       <input type="url" placeholder="https://pinterest.com/..." value={siteSettings.pinterest} onChange={e => setSiteSettings({...siteSettings, pinterest: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3 rounded-lg outline-none focus:border-[#cb2027] font-semibold text-sm" />
+                    </div>
+                    <div>
+                       <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">LinkedIn URL</label>
+                       <input type="url" placeholder="https://linkedin.com/..." value={siteSettings.linkedin} onChange={e => setSiteSettings({...siteSettings, linkedin: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3 rounded-lg outline-none focus:border-[#007bb5] font-semibold text-sm" />
+                    </div>
+                    <div>
+                       <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">YouTube URL</label>
+                       <input type="url" placeholder="https://youtube.com/..." value={siteSettings.youtube} onChange={e => setSiteSettings({...siteSettings, youtube: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3 rounded-lg outline-none focus:border-[#ff0000] font-semibold text-sm" />
+                    </div>
+                    <div>
+                       <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">TikTok URL</label>
+                       <input type="url" placeholder="https://tiktok.com/..." value={siteSettings.tiktok} onChange={e => setSiteSettings({...siteSettings, tiktok: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3 rounded-lg outline-none focus:border-black font-semibold text-sm" />
+                    </div>
+                 </div>
               </div>
 
               <button type="submit" className="w-full bg-[#2a64f6] text-white py-4 rounded-xl font-black shadow-md flex justify-center gap-2 transition-transform hover:-translate-y-0.5 hover:bg-blue-700 mt-4">
