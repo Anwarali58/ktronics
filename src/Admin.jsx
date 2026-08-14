@@ -372,8 +372,9 @@ export default function Admin() {
               <input type="text" required placeholder="Category Tag (e.g. Tutorial)" value={blogForm.category} onChange={e => setBlogForm({...blogForm, category: e.target.value})} className="w-full border bg-slate-50 p-3.5 rounded-xl font-semibold outline-none focus:border-[#45c4f0]" />
               
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                <p className="px-4 pt-3 pb-1 text-xs font-bold text-slate-400 bg-slate-50">Content Editor (Drag & Drop Images Supported!)</p>
+                <p className="px-4 pt-3 pb-1 text-xs font-bold text-rose-500 bg-slate-50">Content Editor (Compress images below 300KB before dropping!)</p>
                 <Editor
+                  // ====== ADD YOUR API KEY HERE ======
                   apiKey="ywlcot2gzhfz4c02f7z3zt7mn1pl6637txauyhvy4v9g6bul" 
                   value={blogForm.snippet}
                   onEditorChange={(content) => setBlogForm({...blogForm, snippet: content})}
@@ -387,15 +388,33 @@ export default function Admin() {
                     ],
                     toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist | image link | removeformat | code',
                     content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:16px; line-height: 1.6; }',
+                    
+                    // THIS ALLOWS FREE IMAGE UPLOADS BUT REJECTS MASSIVE FILES THAT CRASH THE DATABASE
                     image_title: true,
                     automatic_uploads: true,
                     file_picker_types: 'image',
+                    images_upload_handler: (blobInfo, progress) => new Promise((resolve, reject) => {
+                      const file = blobInfo.blob();
+                      // Prevent massive images from crashing the database
+                      if (file.size > 400000) {
+                        reject('Image is too large! Please compress it below 400KB before adding it.');
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.readAsDataURL(file);
+                      reader.onload = () => resolve(reader.result);
+                      reader.onerror = error => reject(error);
+                    }),
                     file_picker_callback: function (cb, value, meta) {
                       var input = document.createElement('input');
                       input.setAttribute('type', 'file');
                       input.setAttribute('accept', 'image/*');
                       input.onchange = function () {
                         var file = this.files[0];
+                        if (file.size > 400000) {
+                          alert("Image is too large! Please compress it below 400KB before adding it.");
+                          return;
+                        }
                         var reader = new FileReader();
                         reader.onload = function () {
                           var id = 'blobid' + (new Date()).getTime();
@@ -498,7 +517,6 @@ export default function Admin() {
                  <input required type="text" placeholder="Tech Hub, Building 4..." value={siteSettings.address} onChange={e => setSiteSettings({...siteSettings, address: e.target.value})} className="w-full border border-slate-200 bg-slate-50 p-3.5 rounded-xl outline-none focus:border-[#45c4f0] font-bold text-slate-900" />
               </div>
 
-              {/* RESTORED SOCIAL MEDIA LINKS SECTION */}
               <div className="pt-4 border-t border-slate-100">
                  <h3 className="text-lg font-black text-slate-800 mb-4">Social Media Links</h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
